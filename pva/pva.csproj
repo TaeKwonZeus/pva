@@ -6,6 +6,7 @@
         <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+        <RootNamespace>pva.GUI</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
@@ -21,5 +22,10 @@
         <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
         <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.0.10"/>
         <PackageReference Include="Avalonia.ReactiveUI" Version="11.0.10"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <UpToDateCheckInput Remove="Assets\Icons\key.png" />
+      <UpToDateCheckInput Remove="Assets\Icons\logo.png" />
     </ItemGroup>
 </Project>

@@ -10,6 +10,7 @@
     </Application.DataTemplates>
   
     <Application.Styles>
-        <FluentTheme />
+        <FluentTheme/>
+        <StyleInclude Source="Assets/Icons.axaml"/>
     </Application.Styles>
 </Application>
