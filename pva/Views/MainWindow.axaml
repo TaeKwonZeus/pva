@@ -12,8 +12,7 @@
         Height="800"
         MinWidth="600"
         MinHeight="400"
-        TransparencyLevelHint="AcrylicBlur">
-
+        ExtendClientAreaToDecorationsHint="True">
 	<Design.DataContext>
 		<!-- This only sets the DataContext for the previewer in an IDE,
              to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
@@ -21,60 +20,32 @@
 	</Design.DataContext>
 
 	<DockPanel>
-		<Panel DockPanel.Dock="Top">
-            <ExperimentalAcrylicBorder IsHitTestVisible="False">
-                <ExperimentalAcrylicBorder.Material>
-                    <ExperimentalAcrylicMaterial
-                        BackgroundSource="Digger"
-                        TintColor="{DynamicResource RegionColor}"
-                        TintOpacity="1"
-                        MaterialOpacity="0.9" />
-                </ExperimentalAcrylicBorder.Material>
-            </ExperimentalAcrylicBorder>
-            <Panel Margin="10 0">
-                <PathIcon Data="{StaticResource DesktopRegular}" HorizontalAlignment="Left"/>
-                <Menu HorizontalAlignment="Center" Height="40">
-                    <MenuItem Header="PABLO"/>
-                    <MenuItem Header="PEDRO"/>
-                </Menu>
-            </Panel>
-        </Panel>
-		<SplitView DisplayMode="Inline" IsPaneOpen="True" OpenPaneLength="200" PaneBackground="{DynamicResource RegionColor}" >
+		<Panel DockPanel.Dock="Top" Height="50">
+			<StackPanel HorizontalAlignment="Left" VerticalAlignment="Center" Orientation="Horizontal">
+				<PathIcon Data="{StaticResource DesktopRegular}" VerticalAlignment="Center" Margin="20 0"/>
+				<Menu HorizontalAlignment="Left" Height="50">
+					<MenuItem Header="_File"/>
+					<MenuItem Header="_Edit"/>
+				</Menu>
+			</StackPanel>
+			<TextBlock HorizontalAlignment="Center" VerticalAlignment="Center">PVA</TextBlock>
+		</Panel>
+		<SplitView DisplayMode="Inline" IsPaneOpen="True" OpenPaneLength="200" PaneBackground="{DynamicResource RegionColor}">
 			<SplitView.Pane>
-                <Panel>
-                    <ExperimentalAcrylicBorder IsHitTestVisible="False">
-                        <ExperimentalAcrylicBorder.Material>
-                            <ExperimentalAcrylicMaterial
-                                BackgroundSource="Digger"
-                                TintColor="{DynamicResource RegionColor}"
-                                TintOpacity="1"
-                                MaterialOpacity="0.9" />
-                        </ExperimentalAcrylicBorder.Material>
-                    </ExperimentalAcrylicBorder>
-                    <Border BorderThickness="0 1 0 0"
-                            BorderBrush="{DynamicResource SystemBaseMediumColor}"
-                            Padding="0 5"
-                            Margin="10 0">
-                        <ListBox Background="{DynamicResource RegionColor}">
-                            <ListBoxItem Margin="0 0 0 5" Padding="10 5" CornerRadius="5">
-                                <StackPanel Spacing="10" Orientation="Horizontal" Height="25">
-                                    <PathIcon Data="{StaticResource KeyRegular}" Height="25"/>
-                                    <TextBlock VerticalAlignment="Center">Passwords</TextBlock>
-                                </StackPanel>
-                            </ListBoxItem>
-                            <ListBoxItem Margin="0 0 0 5" Padding="10 5" CornerRadius="5">
-                                <StackPanel Spacing="10" Orientation="Horizontal" Height="25">
-                                    <PathIcon Data="{StaticResource KeyRegular}" Height="25"/>
-                                    <TextBlock VerticalAlignment="Center">Passwords</TextBlock>
-                                </StackPanel>
-                            </ListBoxItem>
-                        </ListBox>
-                    </Border>
-                </Panel>
+				<Border Margin="10 0 10 0" Padding="0 10 0 0" BorderThickness="0 1 0 0" BorderBrush="{DynamicResource SystemBaseMediumColor}">
+					<ListBox Background="{DynamicResource RegionColor}" Name="Navbar">
+                        <ListBoxItem Margin="0 0 0 5" Padding="10 5" CornerRadius="5" Classes="navlink">
+                            <StackPanel Spacing="10" Orientation="Horizontal" Height="25">
+								<PathIcon Data="{StaticResource KeyRegular}" Height="25"/>
+								<TextBlock VerticalAlignment="Center">Passwords</TextBlock>
+							</StackPanel>
+						</ListBoxItem>
+					</ListBox>
+				</Border>
 			</SplitView.Pane>
 			<SplitView.Content>
-				<Border Padding="5" CornerRadius="40 0 0 0">
-					<TextBlock>CONTENT</TextBlock>
+				<Border Padding="10" CornerRadius="10 0 0 0" Background="#272727">
+					<Button>asdf</Button>
 				</Border>
 			</SplitView.Content>
 		</SplitView>
