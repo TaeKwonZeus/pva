@@ -24,6 +24,12 @@
             <Style Selector="^:selected /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Background" Value="#454545" />
             </Style>
+			<Style Selector="^ > StackPanel > Border">
+                <Setter Property="Background" Value="{DynamicResource RegionColor}"/>
+			</Style>
+            <Style Selector="^:selected > StackPanel > Border">
+                    <Setter Property="Background" Value="{DynamicResource SystemAccentColor}"/>
+				</Style>
         </Style>
     </Window.Styles>
 
@@ -42,20 +48,29 @@
 			<SplitView.Pane>
 				<Border Margin="10 0 10 0" Padding="0 10 0 0" BorderThickness="0 1 0 0" BorderBrush="{DynamicResource SystemBaseMediumColor}">
 					<ListBox Background="{DynamicResource RegionColor}" Name="Navbar">
-                        <ListBoxItem Margin="0 0 0 5" Padding="10 5" CornerRadius="5">
+                        <ListBoxItem Margin="0 0 0 5" Padding=" 5" CornerRadius="5">
                             <StackPanel Spacing="10" Orientation="Horizontal" Height="25">
-								<PathIcon Data="{StaticResource KeyRegular}" Height="25"/>
+								<Border CornerRadius="2" Height="20" Width="3">
+									<Rectangle/>
+                                </Border>
+                                <PathIcon Data="{StaticResource KeyRegular}" Height="25"/>
 								<TextBlock VerticalAlignment="Center">Passwords</TextBlock>
 							</StackPanel>
 						</ListBoxItem>
-                        <ListBoxItem Margin="0 0 0 5" Padding="10 5" CornerRadius="5">
+                        <ListBoxItem Margin="0 0 0 5" Padding=" 5" CornerRadius="5">
                             <StackPanel Spacing="10" Orientation="Horizontal" Height="25">
+                                <Border CornerRadius="2" Height="20" Width="3">
+                                    <Rectangle/>
+                                </Border>
                                 <PathIcon Data="{StaticResource KeyRegular}" Height="25"/>
                                 <TextBlock VerticalAlignment="Center">Passwords</TextBlock>
                             </StackPanel>
                         </ListBoxItem>
-                        <ListBoxItem Margin="0 0 0 5" Padding="10 5" CornerRadius="5">
+                        <ListBoxItem Margin="0 0 0 5" Padding=" 5" CornerRadius="5">
                             <StackPanel Spacing="10" Orientation="Horizontal" Height="25">
+                                <Border CornerRadius="2" Height="20" Width="3">
+                                    <Rectangle/>
+                                </Border>
                                 <PathIcon Data="{StaticResource KeyRegular}" Height="25"/>
                                 <TextBlock VerticalAlignment="Center">Passwords</TextBlock>
                             </StackPanel>
