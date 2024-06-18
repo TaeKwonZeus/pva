@@ -6,7 +6,7 @@
         <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
-        <RootNamespace>pva.GUI</RootNamespace>
+        <RootNamespace>pva.Application</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
@@ -25,7 +25,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <UpToDateCheckInput Remove="Assets\Icons\key.png" />
-      <UpToDateCheckInput Remove="Assets\Icons\logo.png" />
+        <UpToDateCheckInput Remove="Assets\Icons\key.png"/>
+        <UpToDateCheckInput Remove="Assets\Icons\logo.png"/>
     </ItemGroup>
 </Project>

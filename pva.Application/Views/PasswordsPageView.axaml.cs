@@ -2,9 +2,9 @@ using Avalonia.Controls;
 
 namespace pva.Application.Views;
 
-public partial class MainWindow : Window
+public partial class PasswordsPageView : UserControl
 {
-    public MainWindow()
+    public PasswordsPageView()
     {
         InitializeComponent();
     }

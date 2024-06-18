@@ -1,22 +1,39 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="pva.GUI.App"
-             xmlns:local="using:pva.GUI"
+             xmlns:application="clr-namespace:pva.Application"
+             x:Class="pva.Application.App"
              RequestedThemeVariant="Dark">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+    <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
     <Application.DataTemplates>
-        <local:ViewLocator/>
+        <application:ViewLocator />
     </Application.DataTemplates>
-  
+
     <Application.Styles>
         <FluentTheme>
             <FluentTheme.Palettes>
-                <ColorPaletteResources x:Key="Light" Accent="#ff00b294" AltHigh="White" AltLow="White" AltMedium="White" AltMediumHigh="White" AltMediumLow="White" BaseHigh="Black" BaseLow="#ffcccccc" BaseMedium="#ff898989" BaseMediumHigh="#ff5d5d5d" BaseMediumLow="#ff737373" ChromeAltLow="#ff5d5d5d" ChromeBlackHigh="Black" ChromeBlackLow="#ffcccccc" ChromeBlackMedium="#ff5d5d5d" ChromeBlackMediumLow="#ff898989" ChromeDisabledHigh="#ffcccccc" ChromeDisabledLow="#ff898989" ChromeGray="#ff737373" ChromeHigh="#ffcccccc" ChromeLow="#ffececec" ChromeMedium="#ffe6e6e6" ChromeMediumLow="#ffececec" ChromeWhite="White" ListLow="#ffe6e6e6" ListMedium="#ffcccccc" RegionColor="White" />
-                <ColorPaletteResources x:Key="Dark" Accent="#ff00b294" AltHigh="Black" AltLow="Black" AltMedium="Black" AltMediumHigh="Black" AltMediumLow="Black" BaseHigh="White" BaseLow="#ff323232" BaseMedium="#ff999999" BaseMediumHigh="#ffb3b3b3" BaseMediumLow="#ff666666" ChromeAltLow="#ffb3b3b3" ChromeBlackHigh="Black" ChromeBlackLow="#ffb3b3b3" ChromeBlackMedium="Black" ChromeBlackMediumLow="Black" ChromeDisabledHigh="#ff323232" ChromeDisabledLow="#ff999999" ChromeGray="#ff7f7f7f" ChromeHigh="#ff7f7f7f" ChromeLow="#ff151515" ChromeMedium="#ff1c1c1c" ChromeMediumLow="#ff2b2b2b" ChromeWhite="White" ListLow="#ff2d2d2d" ListMedium="#ff323232" RegionColor="#ff202020" />
+                <ColorPaletteResources x:Key="Light" Accent="#ff00b294" AltHigh="White" AltLow="White"
+                                       AltMedium="White" AltMediumHigh="White" AltMediumLow="White" BaseHigh="Black"
+                                       BaseLow="#ffcccccc" BaseMedium="#ff898989" BaseMediumHigh="#ff5d5d5d"
+                                       BaseMediumLow="#ff737373" ChromeAltLow="#ff5d5d5d" ChromeBlackHigh="Black"
+                                       ChromeBlackLow="#ffcccccc" ChromeBlackMedium="#ff5d5d5d"
+                                       ChromeBlackMediumLow="#ff898989" ChromeDisabledHigh="#ffcccccc"
+                                       ChromeDisabledLow="#ff898989" ChromeGray="#ff737373" ChromeHigh="#ffcccccc"
+                                       ChromeLow="#ffececec" ChromeMedium="#ffe6e6e6" ChromeMediumLow="#ffececec"
+                                       ChromeWhite="White" ListLow="#ffe6e6e6" ListMedium="#ffcccccc"
+                                       RegionColor="White" />
+                <ColorPaletteResources x:Key="Dark" Accent="#ff00b294" AltHigh="Black" AltLow="Black" AltMedium="Black"
+                                       AltMediumHigh="Black" AltMediumLow="Black" BaseHigh="White" BaseLow="#ff323232"
+                                       BaseMedium="#ff999999" BaseMediumHigh="#ffb3b3b3" BaseMediumLow="#ff666666"
+                                       ChromeAltLow="#ffb3b3b3" ChromeBlackHigh="Black" ChromeBlackLow="#ffb3b3b3"
+                                       ChromeBlackMedium="Black" ChromeBlackMediumLow="Black"
+                                       ChromeDisabledHigh="#ff323232" ChromeDisabledLow="#ff999999"
+                                       ChromeGray="#ff7f7f7f" ChromeHigh="#ff7f7f7f" ChromeLow="#ff151515"
+                                       ChromeMedium="#ff1c1c1c" ChromeMediumLow="#ff2b2b2b" ChromeWhite="White"
+                                       ListLow="#ff2d2d2d" ListMedium="#ff323232" RegionColor="#ff202020" />
             </FluentTheme.Palettes>
         </FluentTheme>
 
-		<StyleInclude Source="Assets/Icons.axaml"/>
+        <StyleInclude Source="Assets/Icons.axaml" />
     </Application.Styles>
 </Application>

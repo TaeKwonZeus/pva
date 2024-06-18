@@ -1,6 +1,6 @@
 ﻿using ReactiveUI;
 
-namespace pva.GUI.ViewModels;
+namespace pva.Application.ViewModels;
 
 public class ViewModelBase : ReactiveObject
 {
