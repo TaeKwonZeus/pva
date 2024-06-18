@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "pva", "pva\pva.csproj", "{6B488015-4F30-4809-AD14-E3E9D4A80083}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "pva.Application", "pva.Application\pva.Application.csproj", "{6B488015-4F30-4809-AD14-E3E9D4A80083}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "pva.Daemon", "pva.Daemon\pva.Daemon.csproj", "{04F685EA-543E-4E65-B0B8-102761297590}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -18,5 +20,9 @@ Global
 		{6B488015-4F30-4809-AD14-E3E9D4A80083}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6B488015-4F30-4809-AD14-E3E9D4A80083}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6B488015-4F30-4809-AD14-E3E9D4A80083}.Release|Any CPU.Build.0 = Release|Any CPU
+		{04F685EA-543E-4E65-B0B8-102761297590}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{04F685EA-543E-4E65-B0B8-102761297590}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{04F685EA-543E-4E65-B0B8-102761297590}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{04F685EA-543E-4E65-B0B8-102761297590}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
