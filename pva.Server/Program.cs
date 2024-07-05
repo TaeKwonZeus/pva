@@ -16,6 +16,7 @@ if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
     [DllImport("libc")]
     static extern int geteuid();
 
+    // Root check
     if (geteuid() != 0)
     {
         Console.WriteLine("The server needs to be run as root");
@@ -30,6 +31,7 @@ if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
 }
 else if (OperatingSystem.IsWindows())
 {
+    // Admin check
     using var identity = WindowsIdentity.GetCurrent();
     var principal = new WindowsPrincipal(identity);
     if (!principal.IsInRole(WindowsBuiltInRole.Administrator))

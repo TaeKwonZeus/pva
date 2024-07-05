@@ -25,7 +25,7 @@
             <Setter Property="Padding" Value="5" />
             <Setter Property="CornerRadius" Value="5" />
             <Style Selector="^:selected /template/ ContentPresenter#PART_ContentPresenter">
-                <Setter Property="Background" Value="#454545" />
+                <Setter Property="Background" Value="{DynamicResource SystemBaseLowColor}" />
             </Style>
             <Style Selector="^ > StackPanel > Border">
                 <Setter Property="Background" Value="{DynamicResource RegionColor}" />
@@ -36,8 +36,7 @@
         </Style>
     </Window.Styles>
 
-    <SplitView DisplayMode="Inline" IsPaneOpen="True" OpenPaneLength="200"
-               PaneBackground="{DynamicResource RegionColor}">
+    <SplitView DisplayMode="Inline" IsPaneOpen="True" OpenPaneLength="200">
         <SplitView.Pane>
             <StackPanel>
                 <PathIcon Data="{StaticResource DesktopRegular}" HorizontalAlignment="Left" Margin="15" />
@@ -47,7 +46,7 @@
                              ItemsSource="{Binding SidebarItems}" SelectedItem="{Binding SelectedItem}">
                         <ListBox.ItemTemplate>
                             <DataTemplate DataType="{x:Type viewModels:SidebarItem}">
-                                <StackPanel Spacing="10" Orientation="Horizontal" Height="25">
+                                <StackPanel Spacing="8" Orientation="Horizontal" Height="25">
                                     <Border CornerRadius="2" Height="20" Width="3">
                                         <Rectangle />
                                     </Border>
@@ -61,7 +60,7 @@
             </StackPanel>
         </SplitView.Pane>
         <SplitView.Content>
-            <Border Padding="10" Background="#272727">
+            <Border Padding="10">
                 <TransitioningContentControl Content="{Binding CurrentPage}" />
             </Border>
         </SplitView.Content>

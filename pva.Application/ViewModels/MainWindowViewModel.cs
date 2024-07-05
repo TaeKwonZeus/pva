@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using System.Reactive.Concurrency;
 using Avalonia.Media;
 using ReactiveUI;
 
@@ -9,13 +10,23 @@ public class MainWindowViewModel : ViewModelBase
 {
     private SidebarItem _selectedItem;
 
+    public MainWindowViewModel()
+    {
+        _selectedItem = SidebarItems[0];
+        RxApp.TaskpoolScheduler.Schedule(EstablishGrpcConnection);
+    }
+
     public SidebarItem SelectedItem
     {
         get => _selectedItem;
         set
         {
-            this.RaiseAndSetIfChanged(ref _selectedItem, value);
-            OnSelectedItemChanged();
+            if (value == _selectedItem) return;
+            _selectedItem = value;
+            var instance = Activator.CreateInstance(SelectedItem.ModelType);
+            if (instance is null) return;
+            CurrentPage = (ViewModelBase)instance;
+            Console.WriteLine("Tab changed");
         }
     }
 
@@ -25,19 +36,15 @@ public class MainWindowViewModel : ViewModelBase
     [
         new SidebarItem(typeof(PasswordsPageViewModel), "KeyRegular"),
         new SidebarItem(typeof(PasswordsPageViewModel), "KeyRegular")
-        // TOOD add more items
+        // TODO add more items
     ];
 
-    private void OnSelectedItemChanged()
+    private void EstablishGrpcConnection()
     {
-        var instance = Activator.CreateInstance(SelectedItem.ModelType);
-        if (instance is null) return;
-        CurrentPage = (ViewModelBase)instance;
-        Console.WriteLine("Tab changed");
     }
 }
 
-public struct SidebarItem
+public class SidebarItem
 {
     public SidebarItem(Type modelType, string iconName)
     {
