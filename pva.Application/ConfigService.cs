@@ -23,7 +23,7 @@ public class ConfigService
                 var config = JsonSerializer.Deserialize<Config>(File.ReadAllText(_addr))!;
                 Config = config;
             }
-            catch (Exception _)
+            catch (Exception)
             {
                 Config = new Config();
                 File.WriteAllText(_addr, JsonSerializer.Serialize(Config, _prettyPrint));
