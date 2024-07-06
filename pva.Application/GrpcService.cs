@@ -1,3 +1,4 @@
+using System.Net;
 using System.Threading.Tasks;
 using Grpc.Core;
 using Grpc.Net.Client;
@@ -5,32 +6,28 @@ using pva.Grpc;
 
 namespace pva.Application;
 
-public static class GrpcService
+public class GrpcService
 {
-    private static GrpcChannel? _channel;
+    private readonly GrpcChannel _channel;
 
-    // Returns true if connected successfully
-    public static bool Connect(string addr)
+    public GrpcService(string addr)
     {
-        var channel = GrpcChannel.ForAddress(addr);
-        if (channel.State != ConnectivityState.Ready) return false;
-
-        _channel = channel;
-        return true;
+        _channel = GrpcChannel.ForAddress(addr);
+        if (!Ping()) throw new WebException("Failed to connect to gRPC server");
     }
 
-    public static bool Ping()
+    public bool Ping()
     {
-        if (_channel != null && _channel.State != ConnectivityState.Ready) return false;
+        if (_channel.State != ConnectivityState.Ready) return false;
         var client = new Main.MainClient(_channel);
 
         var req = client.Ping(new PingRequest());
         return req != null;
     }
 
-    public static async Task<bool> PingAsync()
+    public async Task<bool> PingAsync()
     {
-        if (_channel != null && _channel.State != ConnectivityState.Ready) return false;
+        if (_channel.State != ConnectivityState.Ready) return false;
 
         var client = new Main.MainClient(_channel);
 

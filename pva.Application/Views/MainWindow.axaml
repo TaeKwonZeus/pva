@@ -43,9 +43,9 @@
                 <Border Margin="10 0 10 0" Padding="0 10 0 0" BorderThickness="0 1 0 0"
                         BorderBrush="{DynamicResource SystemBaseMediumColor}">
                     <ListBox Background="{DynamicResource RegionColor}" Name="Navbar"
-                             ItemsSource="{Binding SidebarItems}" SelectedItem="{Binding SelectedItem}">
+                             ItemsSource="{Binding NavbarItems}" SelectedItem="{Binding SelectedItem}">
                         <ListBox.ItemTemplate>
-                            <DataTemplate DataType="{x:Type viewModels:SidebarItem}">
+                            <DataTemplate>
                                 <StackPanel Spacing="8" Orientation="Horizontal" Height="25">
                                     <Border CornerRadius="2" Height="20" Width="3">
                                         <Rectangle />

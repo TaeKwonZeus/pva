@@ -1,22 +1,23 @@
 ﻿using System;
 using System.Collections.ObjectModel;
-using System.Reactive.Concurrency;
-using Avalonia.Media;
-using ReactiveUI;
+using pva.Application.Models;
 
 namespace pva.Application.ViewModels;
 
 public class MainWindowViewModel : ViewModelBase
 {
-    private SidebarItem _selectedItem;
+    private readonly Config _config;
+    private readonly GrpcService _grpcService;
+    private MainNavbarItem _selectedItem;
 
-    public MainWindowViewModel()
+    public MainWindowViewModel(Config config, GrpcService grpcService)
     {
-        _selectedItem = SidebarItems[0];
-        RxApp.TaskpoolScheduler.Schedule(EstablishGrpcConnection);
+        _config = config;
+        _grpcService = grpcService;
+        _selectedItem = NavbarItems[0];
     }
 
-    public SidebarItem SelectedItem
+    public MainNavbarItem SelectedItem
     {
         get => _selectedItem;
         set
@@ -32,32 +33,10 @@ public class MainWindowViewModel : ViewModelBase
 
     public ViewModelBase CurrentPage { get; private set; } = new PasswordsPageViewModel();
 
-    public ObservableCollection<SidebarItem> SidebarItems { get; } =
+    public ObservableCollection<MainNavbarItem> NavbarItems { get; } =
     [
-        new SidebarItem(typeof(PasswordsPageViewModel), "KeyRegular"),
-        new SidebarItem(typeof(PasswordsPageViewModel), "KeyRegular")
+        new MainNavbarItem(typeof(PasswordsPageViewModel), "KeyRegular"),
+        new MainNavbarItem(typeof(PasswordsPageViewModel), "KeyRegular")
         // TODO add more items
     ];
-
-    private void EstablishGrpcConnection()
-    {
-    }
-}
-
-public class SidebarItem
-{
-    public SidebarItem(Type modelType, string iconName)
-    {
-        ModelType = modelType;
-        Label = ModelType.Name.Replace("PageViewModel", "");
-
-        Avalonia.Application.Current!.TryGetResource(iconName, null, out var res);
-        Icon = (StreamGeometry)res!;
-    }
-
-    public string Label { get; }
-
-    public Type ModelType { get; }
-
-    public StreamGeometry Icon { get; }
 }

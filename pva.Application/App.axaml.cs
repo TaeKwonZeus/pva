@@ -14,10 +14,18 @@ public class App : Avalonia.Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        var config = new ConfigService("appsettings.json").Config;
+        if (config.ServerAddr == null)
+            // TODO dialog window asking for server address
+            // STUB
+            config.ServerAddr = "https://localhost:5101";
+
+        var grpcService = new GrpcService(config.ServerAddr);
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             desktop.MainWindow = new MainWindow
             {
-                DataContext = new MainWindowViewModel()
+                DataContext = new MainWindowViewModel(config, grpcService)
             };
 
         base.OnFrameworkInitializationCompleted();
