@@ -29,7 +29,6 @@ public class App : Avalonia.Application
         }
         else
         {
-            // TODO dialog window asking for server address
             var window = new ConnectWindow
             {
                 DataContext = new ConnectWindowViewModel(config)
