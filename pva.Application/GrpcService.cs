@@ -13,12 +13,11 @@ public class GrpcService
     public GrpcService(string addr)
     {
         _channel = GrpcChannel.ForAddress(addr);
-        if (!Ping()) throw new WebException("Failed to connect to gRPC server");
+        if (!Ping()) throw new WebException("Failed to connect to the server.");
     }
 
     public bool Ping()
     {
-        if (_channel.State != ConnectivityState.Ready) return false;
         var client = new Main.MainClient(_channel);
 
         var req = client.Ping(new PingRequest());
@@ -27,7 +26,6 @@ public class GrpcService
 
     public async Task<bool> PingAsync()
     {
-        if (_channel.State != ConnectivityState.Ready) return false;
 
         var client = new Main.MainClient(_channel);
 

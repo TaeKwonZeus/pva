@@ -17,6 +17,11 @@ public class MainWindowViewModel : ViewModelBase
         _selectedItem = NavbarItems[0];
     }
 
+    public MainWindowViewModel()
+    {
+        _selectedItem = NavbarItems[0];
+    }
+
     public MainNavbarItem SelectedItem
     {
         get => _selectedItem;
@@ -31,7 +36,7 @@ public class MainWindowViewModel : ViewModelBase
         }
     }
 
-    public ViewModelBase CurrentPage { get; private set; } = new PasswordsPageViewModel();
+    public ViewModelBase CurrentPage { get; private set; }
 
     public ObservableCollection<MainNavbarItem> NavbarItems { get; } =
     [
