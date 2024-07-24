@@ -1,4 +1,3 @@
-using System.Net;
 using System.Threading.Tasks;
 using Grpc.Core;
 using Grpc.Net.Client;
@@ -13,23 +12,22 @@ public class GrpcService
     public GrpcService(string addr)
     {
         _channel = GrpcChannel.ForAddress(addr);
-        if (!Ping()) throw new WebException("Failed to connect to the server.");
+        if (!Ping()) throw new RpcException(new Status(StatusCode.Unavailable, "Error pinging server"));
     }
 
     public bool Ping()
     {
         var client = new Main.MainClient(_channel);
 
-        var req = client.Ping(new PingRequest());
+        var req = client.Ping(new PingRequest { Name = "Ping" });
         return req != null;
     }
 
     public async Task<bool> PingAsync()
     {
-
         var client = new Main.MainClient(_channel);
 
-        var req = await client.PingAsync(new PingRequest());
+        var req = await client.PingAsync(new PingRequest { Name = "Ping" });
         return req != null;
     }
 }

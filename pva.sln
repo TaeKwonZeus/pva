@@ -5,7 +5,7 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "pva.Application", "pva.Application\pva.Application.csproj", "{6B488015-4F30-4809-AD14-E3E9D4A80083}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "pva.Grpc", "pva.Grpc\pva.Grpc.csproj", "{33724957-AFF1-4F61-8309-6323E25CE396}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "pva.Common", "pva.Common\pva.Common.csproj", "{33724957-AFF1-4F61-8309-6323E25CE396}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "pva.Server", "pva.Server\pva.Server.csproj", "{8058042F-AF01-450E-AAFA-DDAB681307A9}"
 EndProject

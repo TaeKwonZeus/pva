@@ -1,25 +1,30 @@
 using System;
-using System.Net;
-using Avalonia.Controls.ApplicationLifetimes;
-using pva.Application.Views;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Grpc.Core;
 
 namespace pva.Application.ViewModels;
 
-public class ConnectWindowViewModel : ViewModelBase
+public partial class ConnectWindowViewModel : ViewModelBase
 {
     private readonly Config _config;
+    private readonly WindowManager _windowManager;
 
-    public event Action<Config, GrpcService> Connected = (_, _) => { };
-    public event Action<Exception> FailedToConnect = (_) => { };
+    [ObservableProperty] private string _message;
 
-    public ConnectWindowViewModel(Config config)
+    public ConnectWindowViewModel(Config config, WindowManager windowManager, string message = "")
     {
         _config = config;
+        _windowManager = windowManager;
+        _message = message;
     }
 
     public string Url { get; set; } = "";
+
     public bool Remember { get; set; } = true;
 
+
+    [RelayCommand]
     public void Connect()
     {
         if (Remember) _config.ServerAddr = Url;
@@ -28,12 +33,11 @@ public class ConnectWindowViewModel : ViewModelBase
         {
             var grpcService = new GrpcService(Url);
 
-            Connected.Invoke(_config, grpcService);
+            _windowManager.StartMain(this, grpcService);
         }
-        catch (Exception e)
+        catch (RpcException e)
         {
             Console.WriteLine(e);
-            FailedToConnect.Invoke(e);
         }
     }
 }

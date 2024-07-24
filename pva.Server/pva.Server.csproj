@@ -7,13 +7,14 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2"/>
         <PackageReference Include="Dapper" Version="2.1.35"/>
         <PackageReference Include="Grpc.AspNetCore" Version="2.63.0"/>
         <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.6"/>
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\pva.Grpc\pva.Grpc.csproj"/>
+        <ProjectReference Include="..\pva.Common\pva.Common.csproj"/>
     </ItemGroup>
 
     <ItemGroup>

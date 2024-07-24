@@ -19,15 +19,18 @@ if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
     // Root check
     if (geteuid() != 0)
     {
-        Console.WriteLine("The server needs to be run as root");
-        Environment.Exit(-1);
+        // Console.WriteLine("The server needs to be run as root");
+        // Environment.Exit(-1);
+        dataSource = "Data Source=db.sqlite";
     }
+    else
+    {
+        dataSource = "Data Source=/var/lib/pva-server/db.sqlite";
+        Directory.CreateDirectory("/var/lib/pva-server");
 
-    dataSource = "Data Source=/var/lib/pva-server/db.sqlite";
-    Directory.CreateDirectory("/var/lib/pva-server");
-
-    Process.Start("chown", "root /var/lib/pva-server");
-    Process.Start("chmod", "700 /var/lib/pva-server");
+        Process.Start("chown", "root /var/lib/pva-server");
+        Process.Start("chmod", "700 /var/lib/pva-server");
+    }
 }
 else if (OperatingSystem.IsWindows())
 {
@@ -68,6 +71,7 @@ using (var conn = app.Services.GetService<IDbConnection>()!)
     var assembly = Assembly.GetExecutingAssembly();
     using var stream = assembly.GetManifestResourceStream($"{assembly.GetName().Name}.Resources.startup.sql")!;
     using var streamReader = new StreamReader(stream, Encoding.UTF8);
+    streamReader.ReadToEnd();
     conn.Execute(streamReader.ReadToEnd(), commandType: CommandType.Text);
 }
 
