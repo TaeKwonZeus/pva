@@ -16,24 +16,24 @@ CREATE TABLE IF NOT EXISTS permissions
     FOREIGN KEY (user_id) REFERENCES users (id)
 );
 
--- For each new secret create a random key
--- We don't store the key: we encrypt the secret with it and
--- for every user with read permission create a row in secret_keys
+-- For each new password create a random key
+-- We don't store the key: we encrypt the password with it and
+-- for every user with read permission create a row in password_keys
 -- Store the key there encrypted with each user's public key
-CREATE TABLE IF NOT EXISTS secrets
+CREATE TABLE IF NOT EXISTS passwords
 (
     id               INTEGER PRIMARY KEY,
     -- Encrypted with randomly generated key
-    encrypted_secret BLOB NOT NULL
+    encrypted_password BLOB NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS secret_keys
+CREATE TABLE IF NOT EXISTS password_keys
 (
-    secret_id     INTEGER,
+    password_id     INTEGER,
     user_id       INTEGER,
     -- Random key encrypted with the user's public key
     encrypted_key BLOB NOT NULL,
-    primary key (secret_id, user_id),
-    foreign key (secret_id) references secrets (id),
+    primary key (password_id, user_id),
+    foreign key (password_id) references passwords (id),
     foreign key (user_id) references users (id)
 );
