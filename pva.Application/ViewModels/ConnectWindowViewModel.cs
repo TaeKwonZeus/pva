@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Grpc.Core;
@@ -12,32 +13,44 @@ public partial class ConnectWindowViewModel : ViewModelBase
 
     [ObservableProperty] private string _message;
 
+    [ObservableProperty] private string _url = "";
+
     public ConnectWindowViewModel(Config config, WindowManager windowManager, string message = "")
     {
         _config = config;
         _windowManager = windowManager;
-        _message = message;
+        Message = message;
     }
 
-    public string Url { get; set; } = "";
+    public bool Remember { get; set; } = false;
 
-    public bool Remember { get; set; } = true;
-
-
-    [RelayCommand]
-    public void Connect()
+    [RelayCommand(CanExecute = nameof(CanConnect))]
+    private async Task Connect(object a)
     {
-        if (Remember) _config.ServerAddr = Url;
-
         try
         {
             var grpcService = new GrpcService(Url);
+            if (!await grpcService.PingAsync())
+                throw new RpcException(Status.DefaultCancelled);
+
+            if (Remember) _config.ServerAddr = Url;
 
             _windowManager.StartMain(this, grpcService);
         }
+        catch (UriFormatException e)
+        {
+            Message = "Invalid URL";
+            Url = "";
+        }
         catch (RpcException e)
         {
-            Console.WriteLine(e);
+            Message = "Failed to connect to server";
+            Url = "";
         }
+    }
+
+    private bool CanConnect(object _)
+    {
+        return !string.IsNullOrWhiteSpace(Url);
     }
 }

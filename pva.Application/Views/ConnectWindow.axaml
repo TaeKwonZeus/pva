@@ -7,21 +7,31 @@
         x:Class="pva.Application.Views.ConnectWindow"
         x:DataType="viewModels:ConnectWindowViewModel"
         Width="400"
-        Height="120"
+        Height="140"
         CanResize="False"
         Title="Connect to server">
 
-    <Grid RowDefinitions="*,*,*" ColumnDefinitions="*,*" Margin="10">
+    <Grid RowDefinitions="*,*,*,*" ColumnDefinitions="*,*" Margin="10">
         <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" HorizontalAlignment="Left" FontSize="18">
             Connect to server
         </TextBlock>
-        <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" VerticalAlignment="Center" Margin="0 0 0 5"
+
+        <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" VerticalAlignment="Center" Margin="0 5"
                  Text="{Binding Url}"
                  Watermark="Enter server URL here" />
-        <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal">
+
+        <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Foreground="Red"
+                   Text="{Binding Message}" />
+
+        <StackPanel Grid.Row="3" Grid.Column="0" Orientation="Horizontal">
             <CheckBox VerticalAlignment="Center" IsChecked="{Binding Remember}" />
             <TextBlock VerticalAlignment="Center">Remember</TextBlock>
         </StackPanel>
-        <Button Grid.Row="2" Grid.Column="1" HorizontalAlignment="Right" Command="{Binding Connect}">Connect</Button>
+
+        <Button Grid.Row="3" Grid.Column="1" HorizontalAlignment="Right" HotKey="Enter"
+                Command="{Binding ConnectCommand}"
+                CommandParameter="{Binding Url}">
+            Connect
+        </Button>
     </Grid>
 </Window>

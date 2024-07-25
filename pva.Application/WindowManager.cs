@@ -26,6 +26,7 @@ public class WindowManager
             DataContext = viewModel
         };
         _windows[viewModel] = window;
+        window.Show();
         if (Avalonia.Application.Current!.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             desktop.MainWindow = window;
 
@@ -33,9 +34,9 @@ public class WindowManager
             _windows[connectWindowViewModel].Close();
     }
 
-    public void StartConnect()
+    public void StartConnect(string message = "")
     {
-        var viewModel = new ConnectWindowViewModel(Config, this);
+        var viewModel = new ConnectWindowViewModel(Config, this, message);
         var view = new ConnectWindow
         {
             DataContext = viewModel

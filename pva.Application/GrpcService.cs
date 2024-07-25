@@ -1,5 +1,5 @@
+using System;
 using System.Threading.Tasks;
-using Grpc.Core;
 using Grpc.Net.Client;
 using pva.Grpc;
 
@@ -12,14 +12,13 @@ public class GrpcService
     public GrpcService(string addr)
     {
         _channel = GrpcChannel.ForAddress(addr);
-        if (!Ping()) throw new RpcException(new Status(StatusCode.Unavailable, "Error pinging server"));
     }
 
     public bool Ping()
     {
         var client = new Main.MainClient(_channel);
 
-        var req = client.Ping(new PingRequest { Name = "Ping" });
+        var req = client.Ping(new PingRequest { Name = "Ping" }, deadline: DateTime.UtcNow.AddSeconds(3));
         return req != null;
     }
 

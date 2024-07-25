@@ -20,15 +20,17 @@ public class App : Avalonia.Application
             try
             {
                 var grpcService = new GrpcService(config.ServerAddr);
+                if (!grpcService.Ping())
+                    throw new RpcException(Status.DefaultCancelled);
                 windowManager.StartMain(null, grpcService);
             }
-            catch (RpcException e)
+            catch (RpcException)
             {
                 config.ServerAddr = null;
-                windowManager.StartConnect();
+                windowManager.StartConnect("Failed to connect with saved configuration");
             }
         else
-            windowManager.StartConnect();
+            windowManager.StartConnect("test");
 
         base.OnFrameworkInitializationCompleted();
     }
