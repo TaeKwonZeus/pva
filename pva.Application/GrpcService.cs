@@ -9,9 +9,15 @@ public class GrpcService
 {
     private readonly GrpcChannel _channel;
 
-    public GrpcService(string addr)
+    public GrpcService(string addr, int? port)
     {
-        _channel = GrpcChannel.ForAddress(addr);
+        var uri = new UriBuilder
+        {
+            Scheme = "http",
+            Host = addr
+        };
+        if (port != null) uri.Port = port.Value;
+        _channel = GrpcChannel.ForAddress(uri.Uri);
     }
 
     public bool Ping()

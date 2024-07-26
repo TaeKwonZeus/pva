@@ -16,10 +16,10 @@ public class App : Avalonia.Application
 
         var windowManager = new WindowManager(config);
 
-        if (config.ServerAddr != null)
+        if (config.ServerAddr != null && config.Port != null)
             try
             {
-                var grpcService = new GrpcService(config.ServerAddr);
+                var grpcService = new GrpcService(config.ServerAddr, config.Port.Value);
                 if (!grpcService.Ping())
                     throw new RpcException(Status.DefaultCancelled);
                 windowManager.StartMain(null, grpcService);

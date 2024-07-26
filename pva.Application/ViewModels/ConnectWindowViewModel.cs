@@ -11,9 +11,11 @@ public partial class ConnectWindowViewModel : ViewModelBase
     private readonly Config _config;
     private readonly WindowManager _windowManager;
 
+    [ObservableProperty] private string _address = "";
+
     [ObservableProperty] private string _message;
 
-    [ObservableProperty] private string _url = "";
+    private int? _port = 5101;
 
     public ConnectWindowViewModel(Config config, WindowManager windowManager, string message = "")
     {
@@ -22,35 +24,53 @@ public partial class ConnectWindowViewModel : ViewModelBase
         Message = message;
     }
 
-    public bool Remember { get; set; } = false;
+    public string Port
+    {
+        get => _port?.ToString() ?? "";
+        set
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                _port = null;
+            else if (int.TryParse(value, out var val))
+                SetProperty(ref _port, val);
+        }
+    }
+
+    public bool Remember { get; set; }
 
     [RelayCommand(CanExecute = nameof(CanConnect))]
-    private async Task Connect(object a)
+    private async Task Connect(object _)
     {
         try
         {
-            var grpcService = new GrpcService(Url);
+            var grpcService = new GrpcService(Address, _port);
             if (!await grpcService.PingAsync())
                 throw new RpcException(Status.DefaultCancelled);
 
-            if (Remember) _config.ServerAddr = Url;
+            if (Remember)
+            {
+                _config.ServerAddr = Address;
+                _config.Port = _port;
+            }
 
             _windowManager.StartMain(this, grpcService);
         }
-        catch (UriFormatException e)
+        catch (UriFormatException)
         {
             Message = "Invalid URL";
-            Url = "";
+            Address = "";
+            Port = "5101";
         }
-        catch (RpcException e)
+        catch (RpcException)
         {
             Message = "Failed to connect to server";
-            Url = "";
+            Address = "";
+            Port = "5101";
         }
     }
 
     private bool CanConnect(object _)
     {
-        return !string.IsNullOrWhiteSpace(Url);
+        return !string.IsNullOrWhiteSpace(Address);
     }
 }
