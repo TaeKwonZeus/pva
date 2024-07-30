@@ -1,5 +1,5 @@
 using Grpc.Core;
-using pva.Grpc;
+using pva.Common;
 
 namespace pva.Server.Services;
 
@@ -14,7 +14,7 @@ public class MainService : Main.MainBase
 
     public override Task<PingResponse> Ping(PingRequest request, ServerCallContext context)
     {
-        _logger.LogInformation("Responding to {Name}", request.Name);
+        _logger.LogInformation("Responding to ping from {}", context.GetHttpContext().Connection.RemoteIpAddress);
         return Task.FromResult(new PingResponse
         {
             Message = "Pong!"

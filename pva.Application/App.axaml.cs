@@ -1,10 +1,18 @@
 using Avalonia.Markup.Xaml;
-using Grpc.Core;
 
 namespace pva.Application;
 
 public class App : Avalonia.Application
 {
+    private Config _config = null!;
+    private WindowManager _windowManager = null!;
+
+    private static App CurrentApp => (Current as App)!;
+
+    public static Config Config => CurrentApp._config;
+
+    public static WindowManager WindowManager => CurrentApp._windowManager;
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -12,25 +20,11 @@ public class App : Avalonia.Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        var config = new ConfigService("appsettings.json").Config;
+        _config = new ConfigService("appsettings.json").Config;
 
-        var windowManager = new WindowManager(config);
+        _windowManager = new WindowManager();
 
-        if (config.ServerAddr != null && config.Port != null)
-            try
-            {
-                var grpcService = new GrpcService(config.ServerAddr, config.Port.Value);
-                if (!grpcService.Ping())
-                    throw new RpcException(Status.DefaultCancelled);
-                windowManager.StartMain(null, grpcService);
-            }
-            catch (RpcException)
-            {
-                config.ServerAddr = null;
-                windowManager.StartConnect("Failed to connect with saved configuration");
-            }
-        else
-            windowManager.StartConnect("test");
+        _windowManager.StartConnect("test");
 
         base.OnFrameworkInitializationCompleted();
     }

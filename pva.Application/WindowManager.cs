@@ -8,19 +8,11 @@ namespace pva.Application;
 
 public class WindowManager
 {
-    private readonly IDictionary<ViewModelBase, Window>
-        _windows = new Dictionary<ViewModelBase, Window>();
-
-    public WindowManager(Config config)
-    {
-        Config = config;
-    }
-
-    private Config Config { get; }
+    private readonly Dictionary<ViewModelBase, Window> _windows = new();
 
     public void StartMain(ConnectWindowViewModel? connectWindowViewModel, GrpcService grpcService)
     {
-        var viewModel = new MainWindowViewModel(Config, grpcService);
+        var viewModel = new MainWindowViewModel(grpcService);
         var window = new MainWindow
         {
             DataContext = viewModel
@@ -31,12 +23,15 @@ public class WindowManager
             desktop.MainWindow = window;
 
         if (connectWindowViewModel != null)
+        {
             _windows[connectWindowViewModel].Close();
+            _windows.Remove(connectWindowViewModel);
+        }
     }
 
     public void StartConnect(string message = "")
     {
-        var viewModel = new ConnectWindowViewModel(Config, this, message);
+        var viewModel = new ConnectWindowViewModel(message);
         var view = new ConnectWindow
         {
             DataContext = viewModel

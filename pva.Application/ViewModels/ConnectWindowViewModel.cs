@@ -8,20 +8,17 @@ namespace pva.Application.ViewModels;
 
 public partial class ConnectWindowViewModel : ViewModelBase
 {
-    private readonly Config _config;
-    private readonly WindowManager _windowManager;
-
-    [ObservableProperty] private string _address = "";
+    [ObservableProperty] private string _address;
 
     [ObservableProperty] private string _message;
 
-    private int? _port = 5101;
+    private int? _port;
 
-    public ConnectWindowViewModel(Config config, WindowManager windowManager, string message = "")
+    public ConnectWindowViewModel(string message = "")
     {
-        _config = config;
-        _windowManager = windowManager;
         Message = message;
+        _address = App.Config.ServerAddr ?? "";
+        _port = App.Config.Port ?? 5101;
     }
 
     public string Port
@@ -36,6 +33,7 @@ public partial class ConnectWindowViewModel : ViewModelBase
         }
     }
 
+
     public bool Remember { get; set; }
 
     [RelayCommand(CanExecute = nameof(CanConnect))]
@@ -45,15 +43,15 @@ public partial class ConnectWindowViewModel : ViewModelBase
         {
             var grpcService = new GrpcService(Address, _port);
             if (!await grpcService.PingAsync())
-                throw new RpcException(Status.DefaultCancelled);
+                throw new RpcException(Status.DefaultSuccess);
 
             if (Remember)
             {
-                _config.ServerAddr = Address;
-                _config.Port = _port;
+                App.Config.ServerAddr = Address;
+                App.Config.Port = _port;
             }
 
-            _windowManager.StartMain(this, grpcService);
+            App.WindowManager.StartMain(this, grpcService);
         }
         catch (UriFormatException)
         {

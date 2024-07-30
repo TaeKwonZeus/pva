@@ -11,6 +11,7 @@
         <PackageReference Include="Dapper" Version="2.1.35"/>
         <PackageReference Include="Grpc.AspNetCore" Version="2.63.0"/>
         <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.6"/>
+        <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.0.1"/>
     </ItemGroup>
 
     <ItemGroup>

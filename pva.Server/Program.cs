@@ -71,12 +71,12 @@ using (var conn = app.Services.GetService<IDbConnection>()!)
     var assembly = Assembly.GetExecutingAssembly();
     using var stream = assembly.GetManifestResourceStream($"{assembly.GetName().Name}.Resources.startup.sql")!;
     using var streamReader = new StreamReader(stream, Encoding.UTF8);
-    streamReader.ReadToEnd();
     conn.Execute(streamReader.ReadToEnd(), commandType: CommandType.Text);
 }
 
 // Configure the HTTP request pipeline.
 app.MapGrpcService<MainService>();
+app.MapGrpcService<AuthService>();
 app.MapGet("/",
     () =>
         "Communication with gRPC endpoints must be made through a gRPC client. To learn how to create a client, visit: https://go.microsoft.com/fwlink/?linkid=2086909");

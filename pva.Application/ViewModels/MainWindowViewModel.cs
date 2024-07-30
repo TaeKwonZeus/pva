@@ -6,19 +6,12 @@ namespace pva.Application.ViewModels;
 
 public class MainWindowViewModel : ViewModelBase
 {
-    private readonly Config _config;
     private readonly GrpcService _grpcService;
     private MainNavbarItem _selectedItem;
 
-    public MainWindowViewModel(Config config, GrpcService grpcService)
+    public MainWindowViewModel(GrpcService grpcService = null!)
     {
-        _config = config;
         _grpcService = grpcService;
-        _selectedItem = NavbarItems[0];
-    }
-
-    public MainWindowViewModel()
-    {
         _selectedItem = NavbarItems[0];
     }
 
@@ -36,7 +29,7 @@ public class MainWindowViewModel : ViewModelBase
         }
     }
 
-    public ViewModelBase CurrentPage { get; private set; }
+    public ViewModelBase? CurrentPage { get; private set; }
 
     public ObservableCollection<MainNavbarItem> NavbarItems { get; } =
     [

@@ -1,8 +1,13 @@
 syntax = "proto3";
 
-option csharp_namespace = "pva.Grpc";
+option csharp_namespace = "pva.Common";
 
 package pva.grpc;
+
+service Auth {
+  rpc Register (RegisterRequest) returns (RegisterResponse);
+  rpc Login (LoginRequest) returns (LoginResponse);
+}
 
 service Main {
   rpc Ping (PingRequest) returns (PingResponse);
@@ -14,4 +19,36 @@ message PingRequest {
 
 message PingResponse {
   string message = 1;
+}
+
+message RegisterRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message RegisterResponse {
+  RegisterStatus status = 1;
+  optional string token = 2;
+  optional string encrypted_pk = 3;
+}
+
+enum RegisterStatus {
+  REGISTER_OK = 0;
+  REGISTER_USERNAME_EXISTS = 1;
+  REGISTER_MISSING_CREDENTIALS = 2;
+}
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  LoginStatus status = 1;
+  optional string token = 2;
+}
+
+enum LoginStatus {
+  LOGIN_OK = 0;
+  LOGIN_FAILED = 1;
 }

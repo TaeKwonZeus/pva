@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using Grpc.Net.Client;
-using pva.Grpc;
+using pva.Common;
 
 namespace pva.Application;
 
@@ -24,7 +24,7 @@ public class GrpcService
     {
         var client = new Main.MainClient(_channel);
 
-        var req = client.Ping(new PingRequest { Name = "Ping" }, deadline: DateTime.UtcNow.AddSeconds(3));
+        var req = client.Ping(new PingRequest { Name = "Ping" }, deadline: DateTime.UtcNow.AddMilliseconds(120));
         return req != null;
     }
 

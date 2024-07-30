@@ -1,4 +1,4 @@
-namespace pva.Protobuf;
+namespace pva.Common;
 
 public static class Permission
 {
