@@ -1,6 +1,11 @@
 using System.Data;
+using System.Security.Cryptography;
+using System.Security.Principal;
+using System.Text;
 using Dapper;
 using Grpc.Core;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
 using pva.Common;
 
 namespace pva.Server.Services;
@@ -21,32 +26,61 @@ public class AuthService : Auth.AuthBase
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
             return new RegisterResponse { Status = RegisterStatus.RegisterMissingCredentials };
 
-        if (await _db.QuerySingleOrDefaultAsync("SELECT 1 FROM users WHERE username = ?",
+        if (await _db.QuerySingleOrDefaultAsync<int?>("SELECT 1 FROM users WHERE username = ?",
                 request.Username) != null)
             return new RegisterResponse { Status = RegisterStatus.RegisterUsernameExists };
 
-        var passwordHash = EncryptionUtil.CreateHash(request.Password);
+        var (encryptionKey, salt) = EncryptionUtil.PasswordToKey(request.Password);
         var (publicKey, privateKey) = EncryptionUtil.GenerateKeypair();
-        var encryptedPrivateKey = EncryptionUtil.EncryptString(privateKey, request.Password);
+        var encryptedPrivateKey =
+            EncryptionUtil.AesEncrypt(privateKey, encryptionKey, Encoding.UTF8.GetBytes(request.Username));
 
         await _db.ExecuteAsync(
             """
-            INSERT INTO users (username, password_hash, public_key, encrypted_private_key)
-            VALUES(@username, @passwordHash, @publicKey, @encryptedPrivateKey);
+            INSERT INTO users (username, public_key, salt, encrypted_private_key)
+            VALUES(@username, @publicKey, @salt, @encryptedPrivateKey);
             """,
             new
             {
                 username = request.Username,
-                passwordHash,
                 publicKey,
+                salt = Convert.ToBase64String(salt),
                 encryptedPrivateKey
             });
         return new RegisterResponse { Status = RegisterStatus.RegisterOk };
         // TODO finish
     }
 
-    public override Task<LoginResponse> Login(LoginRequest request, ServerCallContext context)
+    public override async Task<LoginResponse> Login(LoginRequest request, ServerCallContext context)
     {
-        return base.Login(request, context);
+        if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+            return new LoginResponse { Status = LoginStatus.LoginFailed };
+
+        var userData = await _db.QuerySingleAsync(
+            "SELECT id, salt, encrypted_private_key FROM users WHERE username = @username",
+            new { username = request.Username });
+
+        int id = userData.id;
+        string salt = userData.salt;
+        string encryptedPrivateKey = userData.encrypted_private_key;
+
+        try
+        {
+            EncryptionUtil.AesDecrypt(encryptedPrivateKey, EncryptionUtil.PasswordToKey(request.Password, salt),
+                Encoding.UTF8.GetBytes(request.Username));
+        }
+        catch (CryptographicException)
+        {
+            return new LoginResponse { Status = LoginStatus.LoginFailed };
+        }
+
+        var token = new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
+        {
+            Issuer = context.Host,
+            Audience = context.Peer,
+            Subject = new GenericIdentity(request.Username)
+        })!;
+
+        return new LoginResponse { Status = LoginStatus.LoginOk, Token = token };
     }
 }

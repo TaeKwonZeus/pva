@@ -5,19 +5,11 @@ namespace pva.Common;
 
 public static class EncryptionUtil
 {
-    private const int SaltSize = 16;
-    private const int HashSize = 32;
-    private const int Iterations = 100000;
-
-    private const int IvSize = 16;
-
-    public static string CreateHash(string password)
-    {
-        var salt = RandomNumberGenerator.GetBytes(SaltSize);
-
-        using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Iterations, HashAlgorithmName.SHA256);
-        return Convert.ToBase64String(pbkdf2.GetBytes(HashSize));
-    }
+    private const int Pbkdf2SaltSize = 16;
+    private const int Pbkdf2HashSize = 32;
+    private const int Pbkdf2Iterations = 100000;
+    private const int GcmTagSize = 16;
+    private const int GcmNonceSize = 12;
 
     public static (string publicKey, string privateKey) GenerateKeypair()
     {
@@ -25,56 +17,61 @@ public static class EncryptionUtil
         return (rsa.ExportRSAPublicKeyPem(), rsa.ExportRSAPrivateKeyPem());
     }
 
-    public static string EncryptString(string input, string key)
+    public static (byte[] key, byte[] salt) PasswordToKey(string password)
     {
-        var inputBytes = Encoding.UTF8.GetBytes(input);
-        var keyBytes = SHA256.HashData(Encoding.UTF8.GetBytes(key));
+        var passwordBytes = Encoding.UTF8.GetBytes(password);
+        var salt = RandomNumberGenerator.GetBytes(Pbkdf2SaltSize);
+        using var pbkdf2 = new Rfc2898DeriveBytes(passwordBytes, salt, Pbkdf2Iterations, HashAlgorithmName.SHA256);
 
-        var iv = RandomNumberGenerator.GetBytes(IvSize);
-
-        using var aes = Aes.Create();
-        aes.Key = keyBytes;
-        aes.IV = iv;
-        aes.Mode = CipherMode.CBC;
-        aes.Padding = PaddingMode.PKCS7;
-
-        using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
-        using var ms = new MemoryStream();
-        using var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write);
-        using var sw = new StreamWriter(cs);
-        sw.Write(inputBytes);
-
-        var encryptedBytes = ms.ToArray();
-
-        var result = new byte[IvSize + encryptedBytes.Length];
-        Buffer.BlockCopy(iv, 0, result, 0, IvSize);
-        Buffer.BlockCopy(encryptedBytes, 0, result, IvSize, encryptedBytes.Length);
-
-        return Convert.ToBase64String(result);
+        return (pbkdf2.GetBytes(Pbkdf2HashSize), salt);
     }
 
-    public static string DecryptString(string input, string key)
+    public static byte[] PasswordToKey(string password, string salt)
     {
-        var inputBytes = Convert.FromBase64String(input);
-        var keyBytes = SHA256.HashData(Encoding.UTF8.GetBytes(key));
+        var passwordBytes = Encoding.UTF8.GetBytes(password);
+        var saltBytes = Convert.FromBase64String(salt);
+        using var pbkdf2 = new Rfc2898DeriveBytes(passwordBytes, saltBytes, Pbkdf2Iterations, HashAlgorithmName.SHA256);
 
-        var iv = new byte[IvSize];
-        var encryptedBytes = new byte[inputBytes.Length - IvSize];
-        Buffer.BlockCopy(inputBytes, 0, iv, 0, IvSize);
-        Buffer.BlockCopy(inputBytes, IvSize, encryptedBytes, 0, encryptedBytes.Length);
+        return pbkdf2.GetBytes(Pbkdf2HashSize);
+    }
 
-        using var aes = Aes.Create();
-        aes.Key = keyBytes;
-        aes.IV = iv;
-        aes.Mode = CipherMode.CBC;
-        aes.Padding = PaddingMode.PKCS7;
+    public static string AesEncrypt(string plaintext, byte[] key, byte[]? aad = null)
+    {
+        var plaintextBytes = Encoding.UTF8.GetBytes(plaintext);
 
-        using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
-        using var ms = new MemoryStream();
-        using var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Write);
-        using var sw = new StreamWriter(cs);
-        sw.Write(encryptedBytes);
+        using var aes = new AesGcm(key, GcmTagSize);
 
-        return Encoding.UTF8.GetString(ms.ToArray());
+        var nonce = RandomNumberGenerator.GetBytes(GcmNonceSize);
+
+        var ciphertextBuffer = new byte[plaintextBytes.Length + GcmTagSize + GcmNonceSize];
+        var tagBuffer = new byte[GcmTagSize];
+
+        aes.Encrypt(nonce, plaintextBytes, ciphertextBuffer, tagBuffer, aad);
+
+        // Copy tag and nonce to end of ciphertextBuffer
+        Buffer.BlockCopy(tagBuffer, 0, ciphertextBuffer, plaintextBytes.Length, GcmTagSize);
+        Buffer.BlockCopy(nonce, 0, ciphertextBuffer, plaintextBytes.Length + GcmTagSize, GcmNonceSize);
+
+        return Convert.ToBase64String(ciphertextBuffer);
+    }
+
+    public static string AesDecrypt(string ciphertext, byte[] key, byte[]? aad = null)
+    {
+        var ciphertextBytes = Convert.FromBase64String(ciphertext);
+        var ciphertextLength = ciphertextBytes.Length - GcmTagSize - GcmNonceSize;
+
+        var ciphertextBuffer = new byte[ciphertextLength];
+        var tagBuffer = new byte[GcmTagSize];
+        var nonceBuffer = new byte[GcmNonceSize];
+        Buffer.BlockCopy(ciphertextBytes, 0, ciphertextBuffer, 0, ciphertextLength);
+        Buffer.BlockCopy(ciphertextBytes, ciphertextLength, tagBuffer, 0, GcmTagSize);
+        Buffer.BlockCopy(ciphertextBytes, ciphertextLength + GcmTagSize, nonceBuffer, 0, GcmNonceSize);
+
+        using var aes = new AesGcm(key, GcmTagSize);
+
+        var plaintextBuffer = new byte[ciphertextLength];
+        aes.Decrypt(nonceBuffer, ciphertextBuffer, tagBuffer, plaintextBuffer, aad);
+
+        return Encoding.UTF8.GetString(plaintextBuffer);
     }
 }
