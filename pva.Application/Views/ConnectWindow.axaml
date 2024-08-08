@@ -7,11 +7,11 @@
         x:Class="pva.Application.Views.ConnectWindow"
         x:DataType="viewModels:ConnectWindowViewModel"
         Width="400"
-        Height="160"
+        Height="250"
         CanResize="True"
         Title="Connect to server">
 
-    <Grid RowDefinitions="*,*,*,*" ColumnDefinitions="100,*" Margin="10">
+    <Grid RowDefinitions="*,*,*,*,*,*" ColumnDefinitions="100,*" Margin="10">
         <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center">Address</TextBlock>
         <TextBox Grid.Row="0" Grid.Column="1" VerticalAlignment="Center"
                  Text="{Binding Address}"
@@ -22,18 +22,52 @@
                  Text="{Binding Port}"
                  Watermark="5101" />
 
-        <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Foreground="{StaticResource SystemErrorTextColor}"
-                   Text="{Binding Message}" />
+        <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center">Username</TextBlock>
+        <TextBox Grid.Row="2" Grid.Column="1" VerticalAlignment="Center"
+                 Text="{Binding Username}" />
 
-        <StackPanel Grid.Row="3" Grid.Column="0" Orientation="Horizontal">
+        <TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Center">Password</TextBlock>
+        <TextBox Grid.Row="3" Grid.Column="1" VerticalAlignment="Center"
+                 Text="{Binding Password}" />
+
+        <Border Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Padding="0 5"
+                BorderBrush="{StaticResource SystemBaseMediumLowColor}" BorderThickness="0 1"
+                VerticalAlignment="Center">
+            <TextBlock Foreground="{StaticResource SystemErrorTextColor}" VerticalAlignment="Center"
+                       Text="{Binding Message}" />
+        </Border>
+
+        <StackPanel Grid.Row="5" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Bottom">
             <CheckBox VerticalAlignment="Center" IsChecked="{Binding Remember}" />
             <TextBlock VerticalAlignment="Center">Remember</TextBlock>
         </StackPanel>
 
-        <Button Grid.Row="3" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" HotKey="Enter"
-                Command="{Binding ConnectCommand}"
-                CommandParameter="{Binding Address}">
-            Connect
-        </Button>
+        <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="5"
+                    VerticalAlignment="Bottom">
+            <Button HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                    Command="{Binding Register}">
+                <Button.IsEnabled>
+                    <MultiBinding Converter="{x:Static viewModels:ConnectWindowViewModel.FormConverter}">
+                        <Binding Path="Address" />
+                        <Binding Path="Port" />
+                        <Binding Path="Username" />
+                        <Binding Path="Password" />
+                    </MultiBinding>
+                </Button.IsEnabled>
+                Register
+            </Button>
+            <Button HorizontalAlignment="Right" VerticalAlignment="Bottom" HotKey="Enter"
+                    Command="{Binding Login}">
+                <Button.IsEnabled>
+                    <MultiBinding Converter="{x:Static viewModels:ConnectWindowViewModel.FormConverter}">
+                        <Binding Path="Address" />
+                        <Binding Path="Port" />
+                        <Binding Path="Username" />
+                        <Binding Path="Password" />
+                    </MultiBinding>
+                </Button.IsEnabled>
+                Log in
+            </Button>
+        </StackPanel>
     </Grid>
 </Window>

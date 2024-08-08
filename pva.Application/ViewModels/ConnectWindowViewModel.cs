@@ -1,25 +1,28 @@
-using System;
-using System.Threading.Tasks;
+using System.Linq;
+using Avalonia.Data.Converters;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using Grpc.Core;
 
 namespace pva.Application.ViewModels;
 
 public partial class ConnectWindowViewModel : ViewModelBase
 {
-    [ObservableProperty] private string _address;
+    [ObservableProperty] private string _address = "";
 
-    [ObservableProperty] private string _message;
+    [ObservableProperty] private string _message = "";
 
-    private int? _port;
+    [ObservableProperty] private string _password = "";
+
+    private int? _port = 5101;
+
+    [ObservableProperty] private string _username = "";
 
     public ConnectWindowViewModel(string message = "")
     {
         Message = message;
-        _address = App.Config.ServerAddr ?? "";
-        _port = App.Config.Port ?? 5101;
     }
+
+    public static IMultiValueConverter FormConverter { get; } =
+        new FuncMultiValueConverter<string, bool>(values => values.All(v => !string.IsNullOrWhiteSpace(v)));
 
     public string Port
     {
@@ -27,48 +30,55 @@ public partial class ConnectWindowViewModel : ViewModelBase
         set
         {
             if (string.IsNullOrWhiteSpace(value))
-                _port = null;
+                SetProperty(ref _port, null);
             else if (int.TryParse(value, out var val))
                 SetProperty(ref _port, val);
         }
     }
 
-
     public bool Remember { get; set; }
 
-    [RelayCommand(CanExecute = nameof(CanConnect))]
-    private async Task Connect(object _)
+    // [RelayCommand(CanExecute = nameof(CanConnect))]
+    // private async Task Connect(object _)
+    // {
+    //     try
+    //     {
+    //         var grpcService = new GrpcService(Address, _port);
+    //         if (!await grpcService.PingAsync())
+    //             throw new RpcException(Status.DefaultSuccess);
+    //
+    //         if (Remember)
+    //         {
+    //             App.Config.ServerAddr = Address;
+    //             App.Config.Port = _port;
+    //         }
+    //
+    //         App.WindowManager.StartMain(this, grpcService);
+    //     }
+    //     catch (UriFormatException)
+    //     {
+    //         Message = "Invalid URL";
+    //         Address = "";
+    //         Port = "5101";
+    //     }
+    //     catch (RpcException)
+    //     {
+    //         Message = "Failed to connect to server";
+    //         Address = "";
+    //         Port = "5101";
+    //     }
+    // }
+    //
+    // private bool CanConnect(object _)
+    // {
+    //     return !string.IsNullOrWhiteSpace(Address);
+    // }
+
+    public void Login()
     {
-        try
-        {
-            var grpcService = new GrpcService(Address, _port);
-            if (!await grpcService.PingAsync())
-                throw new RpcException(Status.DefaultSuccess);
-
-            if (Remember)
-            {
-                App.Config.ServerAddr = Address;
-                App.Config.Port = _port;
-            }
-
-            App.WindowManager.StartMain(this, grpcService);
-        }
-        catch (UriFormatException)
-        {
-            Message = "Invalid URL";
-            Address = "";
-            Port = "5101";
-        }
-        catch (RpcException)
-        {
-            Message = "Failed to connect to server";
-            Address = "";
-            Port = "5101";
-        }
     }
 
-    private bool CanConnect(object _)
+    public void Register()
     {
-        return !string.IsNullOrWhiteSpace(Address);
     }
 }
