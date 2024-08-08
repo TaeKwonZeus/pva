@@ -1,31 +1,27 @@
 using System;
+using System.Text.Json.Serialization;
 
 namespace pva.Application;
 
 public class Config
 {
-    private int? _port;
-    private string? _serverAddr;
-
-    public string? ServerAddr
+    public Config(Action updateAction)
     {
-        get => _serverAddr;
-        set
-        {
-            _serverAddr = value;
-            UpdateEvent.Invoke();
-        }
+        UpdateAction = updateAction;
     }
 
-    public int? Port
-    {
-        get => _port;
-        set
-        {
-            _port = value;
-            UpdateEvent.Invoke();
-        }
-    }
+    public string? Address { get; set; }
 
-    public event Action UpdateEvent = () => { };
+    public int? Port { get; set; }
+
+    public string? Username { get; set; }
+
+    public string? Password { get; set; }
+
+    [JsonIgnore] private Action UpdateAction { get; }
+
+    public void Update()
+    {
+        UpdateAction.Invoke();
+    }
 }

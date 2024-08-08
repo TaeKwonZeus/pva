@@ -56,9 +56,11 @@ public class AuthService : Auth.AuthBase
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
             return new LoginResponse { Status = LoginStatus.LoginFailed };
 
-        var userData = await _db.QuerySingleAsync(
+        var userData = await _db.QuerySingleOrDefaultAsync(
             "SELECT id, salt, encrypted_private_key FROM users WHERE username = @username",
             new { username = request.Username });
+
+        if (userData == null) return new LoginResponse { Status = LoginStatus.LoginFailed };
 
         int id = userData.id;
         string salt = userData.salt;

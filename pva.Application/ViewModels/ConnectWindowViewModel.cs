@@ -1,6 +1,10 @@
+using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia.Data.Converters;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Grpc.Core;
 
 namespace pva.Application.ViewModels;
 
@@ -74,11 +78,45 @@ public partial class ConnectWindowViewModel : ViewModelBase
     //     return !string.IsNullOrWhiteSpace(Address);
     // }
 
-    public void Login()
+    [RelayCommand]
+    private async Task Login()
     {
+        try
+        {
+            var grpcService = new GrpcService(Address, _port);
+            if (!await grpcService.PingAsync())
+                throw new RpcException(Status.DefaultSuccess);
+
+            if (await grpcService.LoginAsync(Username, Password))
+            {
+                if (Remember)
+                {
+                    App.Config.Address = Address;
+                    App.Config.Port = _port;
+                    App.Config.Username = Username;
+                    App.Config.Password = Password;
+                    App.Config.Update();
+                }
+
+                App.WindowManager.StartMain(this, grpcService);
+            }
+            else
+            {
+                Message = "Failed to log in";
+                Username = "";
+                Password = "";
+            }
+        }
+        catch (Exception)
+        {
+            Message = "Failed to connect to server";
+            Address = "";
+            Port = "5101";
+        }
     }
 
-    public void Register()
+    [RelayCommand]
+    private async Task Register()
     {
     }
 }

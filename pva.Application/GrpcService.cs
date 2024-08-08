@@ -7,7 +7,11 @@ namespace pva.Application;
 
 public class GrpcService
 {
+    private readonly Auth.AuthClient _authClient;
     private readonly GrpcChannel _channel;
+    private readonly Main.MainClient _mainClient;
+
+    private string _token;
 
     public GrpcService(string addr, int? port)
     {
@@ -18,21 +22,33 @@ public class GrpcService
         };
         if (port != null) uri.Port = port.Value;
         _channel = GrpcChannel.ForAddress(uri.Uri);
-    }
-
-    public bool Ping()
-    {
-        var client = new Main.MainClient(_channel);
-
-        var req = client.Ping(new PingRequest { Name = "Ping" }, deadline: DateTime.UtcNow.AddMilliseconds(120));
-        return req != null;
+        _mainClient = new Main.MainClient(_channel);
+        _authClient = new Auth.AuthClient(_channel);
     }
 
     public async Task<bool> PingAsync()
     {
-        var client = new Main.MainClient(_channel);
-
-        var req = await client.PingAsync(new PingRequest { Name = "Ping" });
+        var req = await _mainClient.PingAsync(new PingRequest { Name = "Ping" });
         return req != null;
+    }
+
+    public async Task<bool> LoginAsync(string username, string password)
+    {
+        try
+        {
+            var res = await _authClient.LoginAsync(new LoginRequest
+            {
+                Username = username, Password = password
+            });
+
+            if (res.Status == LoginStatus.LoginFailed) return false;
+
+            _token = res.Token;
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
     }
 }

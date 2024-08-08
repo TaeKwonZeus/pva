@@ -45,7 +45,7 @@
         <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="5"
                     VerticalAlignment="Bottom">
             <Button HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                    Command="{Binding Register}">
+                    Command="{Binding RegisterCommand}">
                 <Button.IsEnabled>
                     <MultiBinding Converter="{x:Static viewModels:ConnectWindowViewModel.FormConverter}">
                         <Binding Path="Address" />
@@ -57,7 +57,7 @@
                 Register
             </Button>
             <Button HorizontalAlignment="Right" VerticalAlignment="Bottom" HotKey="Enter"
-                    Command="{Binding Login}">
+                    Command="{Binding LoginCommand}">
                 <Button.IsEnabled>
                     <MultiBinding Converter="{x:Static viewModels:ConnectWindowViewModel.FormConverter}">
                         <Binding Path="Address" />

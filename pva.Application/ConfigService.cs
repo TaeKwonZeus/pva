@@ -25,17 +25,15 @@ public class ConfigService
             }
             catch (Exception)
             {
-                Config = new Config();
+                Config = new Config(UpdateConfig);
                 File.WriteAllText(_addr, JsonSerializer.Serialize(Config, _prettyPrint));
             }
         }
         else
         {
-            Config = new Config();
+            Config = new Config(UpdateConfig);
             File.WriteAllText(_addr, JsonSerializer.Serialize(Config, _prettyPrint));
         }
-
-        Config.UpdateEvent += UpdateConfig;
     }
 
     public Config Config { get; }
