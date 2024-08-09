@@ -8,10 +8,9 @@ namespace pva.Application;
 public class GrpcService
 {
     private readonly Auth.AuthClient _authClient;
-    private readonly GrpcChannel _channel;
     private readonly Main.MainClient _mainClient;
 
-    private string _token;
+    private string? _token;
 
     public GrpcService(string addr, int? port)
     {
@@ -21,9 +20,9 @@ public class GrpcService
             Host = addr
         };
         if (port != null) uri.Port = port.Value;
-        _channel = GrpcChannel.ForAddress(uri.Uri);
-        _mainClient = new Main.MainClient(_channel);
-        _authClient = new Auth.AuthClient(_channel);
+        var channel = GrpcChannel.ForAddress(uri.Uri);
+        _mainClient = new Main.MainClient(channel);
+        _authClient = new Auth.AuthClient(channel);
     }
 
     public async Task<bool> PingAsync()
@@ -46,9 +45,28 @@ public class GrpcService
             _token = res.Token;
             return true;
         }
-        catch (Exception)
+        catch
         {
             return false;
+        }
+    }
+
+    // Null is registration failed due to server error
+    public async Task<RegisterStatus?> RegisterAsync(string username, string password)
+    {
+        try
+        {
+            var res = await _authClient.RegisterAsync(new RegisterRequest
+            {
+                Username = username,
+                Password = password
+            });
+
+            return res.Status;
+        }
+        catch
+        {
+            return null;
         }
     }
 }

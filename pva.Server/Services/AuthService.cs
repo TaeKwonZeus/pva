@@ -1,6 +1,5 @@
 using System.Data;
 using System.Security.Cryptography;
-using System.Security.Principal;
 using System.Text;
 using Dapper;
 using Grpc.Core;
@@ -12,13 +11,16 @@ namespace pva.Server.Services;
 
 public class AuthService : Auth.AuthBase
 {
+    private readonly SigningCredentials _credentials;
     private readonly IDbConnection _db;
     private readonly ILogger<MainService> _logger;
 
-    public AuthService(ILogger<MainService> logger, IDbConnection db)
+    public AuthService(ILogger<MainService> logger, IDbConnection db,
+        SigningCredentials credentials)
     {
         _logger = logger;
         _db = db;
+        _credentials = credentials;
     }
 
     public override async Task<RegisterResponse> Register(RegisterRequest request, ServerCallContext context)
@@ -26,8 +28,8 @@ public class AuthService : Auth.AuthBase
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
             return new RegisterResponse { Status = RegisterStatus.RegisterMissingCredentials };
 
-        if (await _db.QuerySingleOrDefaultAsync<int?>("SELECT 1 FROM users WHERE username = ?",
-                request.Username) != null)
+        if (await _db.QuerySingleOrDefaultAsync<int?>("SELECT 1 FROM users WHERE username = @username",
+                new { username = request.Username }) != null)
             return new RegisterResponse { Status = RegisterStatus.RegisterUsernameExists };
 
         var (encryptionKey, salt) = EncryptionUtil.PasswordToKey(request.Password);
@@ -62,7 +64,7 @@ public class AuthService : Auth.AuthBase
 
         if (userData == null) return new LoginResponse { Status = LoginStatus.LoginFailed };
 
-        int id = userData.id;
+        long id = userData.id;
         string salt = userData.salt;
         string encryptedPrivateKey = userData.encrypted_private_key;
 
@@ -78,9 +80,14 @@ public class AuthService : Auth.AuthBase
 
         var token = new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
         {
-            Issuer = context.Host,
-            Audience = context.Peer,
-            Subject = new GenericIdentity(request.Username)
+            Claims = new Dictionary<string, object>
+            {
+                { JwtRegisteredClaimNames.Iss, context.Host },
+                { JwtRegisteredClaimNames.Aud, context.Peer },
+                { JwtRegisteredClaimNames.Sub, id }
+            },
+            Expires = null,
+            SigningCredentials = _credentials
         })!;
 
         return new LoginResponse { Status = LoginStatus.LoginOk, Token = token };

@@ -2,10 +2,12 @@ using System.Data;
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Text;
 using Dapper;
 using Microsoft.Data.Sqlite;
+using Microsoft.IdentityModel.Tokens;
 using pva.Server.Services;
 
 string? dataSource = null;
@@ -56,6 +58,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddGrpc();
+
+builder.Services.AddSingleton(_ =>
+    new SigningCredentials(new SymmetricSecurityKey(RandomNumberGenerator.GetBytes(64)),
+        SecurityAlgorithms.HmacSha256));
+
 builder.Services.AddTransient<IDbConnection>(_ =>
 {
     var conn = new SqliteConnection(dataSource!);

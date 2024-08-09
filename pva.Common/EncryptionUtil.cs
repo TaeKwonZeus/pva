@@ -43,16 +43,18 @@ public static class EncryptionUtil
 
         var nonce = RandomNumberGenerator.GetBytes(GcmNonceSize);
 
-        var ciphertextBuffer = new byte[plaintextBytes.Length + GcmTagSize + GcmNonceSize];
+        var len = plaintextBytes.Length;
+        var ciphertextBuffer = new byte[len];
         var tagBuffer = new byte[GcmTagSize];
 
         aes.Encrypt(nonce, plaintextBytes, ciphertextBuffer, tagBuffer, aad);
 
-        // Copy tag and nonce to end of ciphertextBuffer
-        Buffer.BlockCopy(tagBuffer, 0, ciphertextBuffer, plaintextBytes.Length, GcmTagSize);
-        Buffer.BlockCopy(nonce, 0, ciphertextBuffer, plaintextBytes.Length + GcmTagSize, GcmNonceSize);
+        var res = new byte[len + GcmTagSize + GcmNonceSize];
+        Buffer.BlockCopy(ciphertextBuffer, 0, res, 0, len);
+        Buffer.BlockCopy(tagBuffer, 0, res, len, GcmTagSize);
+        Buffer.BlockCopy(nonce, 0, res, len + GcmTagSize, GcmNonceSize);
 
-        return Convert.ToBase64String(ciphertextBuffer);
+        return Convert.ToBase64String(res);
     }
 
     public static string AesDecrypt(string ciphertext, byte[] key, byte[]? aad = null)

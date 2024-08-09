@@ -5,20 +5,21 @@ using Avalonia.Data.Converters;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Grpc.Core;
+using pva.Common;
 
 namespace pva.Application.ViewModels;
 
 public partial class ConnectWindowViewModel : ViewModelBase
 {
-    [ObservableProperty] private string _address = "";
+    [ObservableProperty] private string _address = App.Config.Address ?? "";
 
     [ObservableProperty] private string _message = "";
 
-    [ObservableProperty] private string _password = "";
+    [ObservableProperty] private string _password = App.Config.Password ?? "";
 
-    private int? _port = 5101;
+    private int? _port = App.Config.Port ?? 5101;
 
-    [ObservableProperty] private string _username = "";
+    [ObservableProperty] private string _username = App.Config.Username ?? "";
 
     public ConnectWindowViewModel(string message = "")
     {
@@ -81,42 +82,82 @@ public partial class ConnectWindowViewModel : ViewModelBase
     [RelayCommand]
     private async Task Login()
     {
+        GrpcService grpcService;
+
         try
         {
-            var grpcService = new GrpcService(Address, _port);
+            grpcService = new GrpcService(Address, _port);
             if (!await grpcService.PingAsync())
                 throw new RpcException(Status.DefaultSuccess);
-
-            if (await grpcService.LoginAsync(Username, Password))
-            {
-                if (Remember)
-                {
-                    App.Config.Address = Address;
-                    App.Config.Port = _port;
-                    App.Config.Username = Username;
-                    App.Config.Password = Password;
-                    App.Config.Update();
-                }
-
-                App.WindowManager.StartMain(this, grpcService);
-            }
-            else
-            {
-                Message = "Failed to log in";
-                Username = "";
-                Password = "";
-            }
         }
         catch (Exception)
         {
             Message = "Failed to connect to server";
             Address = "";
             Port = "5101";
+            return;
+        }
+
+        if (await grpcService.LoginAsync(Username, Password))
+        {
+            if (Remember)
+            {
+                App.Config.Address = Address;
+                App.Config.Port = _port;
+                App.Config.Username = Username;
+                App.Config.Password = Password;
+                App.Config.Update();
+            }
+
+            App.WindowManager.StartMain(this, grpcService);
+        }
+        else
+        {
+            Message = "Failed to log in";
+            Username = "";
+            Password = "";
         }
     }
 
     [RelayCommand]
     private async Task Register()
     {
+        GrpcService grpcService;
+
+        try
+        {
+            grpcService = new GrpcService(Address, _port);
+            if (!await grpcService.PingAsync())
+                throw new RpcException(Status.DefaultSuccess);
+        }
+        catch (Exception)
+        {
+            Message = "Failed to connect to server";
+            Address = "";
+            Port = "5101";
+            return;
+        }
+
+        switch (await grpcService.RegisterAsync(Username, Password))
+        {
+            case RegisterStatus.RegisterOk:
+                Message = "Registered successfully; you may log in";
+                break;
+            case RegisterStatus.RegisterUsernameExists:
+                Message = "Account with given username already exists";
+                Username = "";
+                Password = "";
+                break;
+            case RegisterStatus.RegisterMissingCredentials:
+                Console.WriteLine("Empty credentials; something went wrong");
+                break;
+            case null:
+                Message = "Failed to connect to server";
+                Address = "";
+                Port = "5101";
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
     }
 }

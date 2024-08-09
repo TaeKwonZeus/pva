@@ -28,8 +28,6 @@ message RegisterRequest {
 
 message RegisterResponse {
   RegisterStatus status = 1;
-  optional string token = 2;
-  optional string encrypted_pk = 3;
 }
 
 enum RegisterStatus {
