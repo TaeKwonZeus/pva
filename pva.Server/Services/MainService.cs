@@ -14,7 +14,7 @@ public class MainService : Main.MainBase
 
     public override Task<PingResponse> Ping(PingRequest request, ServerCallContext context)
     {
-        _logger.LogInformation("Responding to ping from {}", context.Peer);
+        _logger.LogInformation("Ping: {}", context.Peer);
         return Task.FromResult(new PingResponse
         {
             Message = "Pong!"

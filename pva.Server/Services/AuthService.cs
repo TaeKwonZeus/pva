@@ -25,6 +25,8 @@ public class AuthService : Auth.AuthBase
 
     public override async Task<RegisterResponse> Register(RegisterRequest request, ServerCallContext context)
     {
+        _logger.LogInformation("Register: {}", context.Peer);
+
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
             return new RegisterResponse { Status = RegisterStatus.RegisterMissingCredentials };
 
@@ -55,6 +57,8 @@ public class AuthService : Auth.AuthBase
 
     public override async Task<LoginResponse> Login(LoginRequest request, ServerCallContext context)
     {
+        _logger.LogInformation("Login: {}", context.Peer);
+
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
             return new LoginResponse { Status = LoginStatus.LoginFailed };
 
