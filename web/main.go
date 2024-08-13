@@ -1,7 +1,6 @@
 package main
 
 import (
-	"embed"
 	"fmt"
 	"log"
 	"net/http"
@@ -9,9 +8,6 @@ import (
 
 	"github.com/TaeKwonZeus/pva/config"
 )
-
-//go:embed frontend/dist
-var frontendEmbed embed.FS
 
 const (
 	dbFilename     = "db.sqlite"
@@ -27,41 +23,19 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	config, err := config.NewConfig(path.Join(fileDirectory, configFilename))
+	cfg, err := config.NewConfig(path.Join(fileDirectory, configFilename))
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 
-	http.Handle("/api", apiServeMux())
-	http.Handle("/", frontendServeMux())
-
-	log.Printf("Listening at https://localhost:%d", config.Port)
+	log.Printf("Listening at https://localhost:%d", cfg.Port)
 	err = http.ListenAndServeTLS(
-		fmt.Sprintf(":%d", config.Port),
+		fmt.Sprintf(":%d", cfg.Port),
 		path.Join(fileDirectory, certFilename),
 		path.Join(fileDirectory, keyFilename),
-		http.DefaultServeMux,
+		newRouter(),
 	)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
-}
-
-func apiServeMux() *http.ServeMux {
-	mux := http.NewServeMux()
-	return mux
-}
-
-func frontendServeMux() *http.ServeMux {
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("GET /favicon.ico", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFileFS(w, r, frontendEmbed, "./favicon.ico")
-	})
-	mux.HandleFunc("GET /*", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFileFS(w, r, frontendEmbed, "./index.html")
-	})
-	mux.Handle("GET /assets/*", http.FileServerFS(frontendEmbed))
-
-	return mux
 }
