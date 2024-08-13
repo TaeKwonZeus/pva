@@ -1,9 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/TaeKwonZeus/pva/db"
 	"github.com/TaeKwonZeus/pva/handlers"
+	"io/fs"
 	"log"
 	"net/http"
 	"path"
@@ -21,15 +23,15 @@ const (
 func main() {
 	log.SetFlags(log.Ldate | log.Lshortfile)
 	if err := setupDirectory(); err != nil {
-		log.Fatalln(err)
+		log.Fatal("Failed to set up /var/lib/pva-server; please run as root")
 	}
 
-	cfg, err := config.NewConfig(path.Join(fileDirectory, configFilename))
+	cfg, err := config.NewConfig(path.Join(directory, configFilename))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	pool, err := db.NewPool(path.Join(fileDirectory, dbFilename))
+	pool, err := db.NewPool(path.Join(directory, dbFilename))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -40,11 +42,15 @@ func main() {
 	log.Printf("Listening at https://localhost:%d", cfg.Port)
 	err = http.ListenAndServeTLS(
 		fmt.Sprintf(":%d", cfg.Port),
-		path.Join(fileDirectory, certFilename),
-		path.Join(fileDirectory, keyFilename),
+		path.Join(directory, certFilename),
+		path.Join(directory, keyFilename),
 		newRouter(env),
 	)
 	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			log.Fatalf("Missing %s or %s. Please provide a valid TLS certificate and private key in %s.",
+				certFilename, keyFilename, directory)
+		}
 		log.Fatal(err)
 	}
 }

@@ -33,13 +33,13 @@ func NewConfig(path string) (*Config, error) {
 		return nil, err
 	}
 
-	newConfig, err := json.Marshal(config)
+	newConfig, err := json.MarshalIndent(Config{Port: 5101}, "", "    ")
 	if err != nil {
 		log.Println("C")
 		return nil, err
 	}
 
-	if err = os.WriteFile(path, newConfig, 0700); err != nil {
+	if err = os.WriteFile(path, newConfig, 0600); err != nil {
 		log.Println("D")
 		return nil, err
 	}

@@ -1,6 +1,11 @@
 <script setup>
+
 </script>
 
 <template>
-  home
+  login
 </template>
+
+<style scoped>
+
+</style>
