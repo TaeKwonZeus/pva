@@ -2,5 +2,5 @@
 </script>
 
 <template>
-  home
+  Home
 </template>
