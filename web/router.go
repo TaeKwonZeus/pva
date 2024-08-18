@@ -40,7 +40,7 @@ func authMiddleware(signingKey []byte) func(next http.Handler) http.Handler {
 			token, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 			if token == "" {
 				log.Printf("%s: Missing token", r.RemoteAddr)
-				w.WriteHeader(http.StatusUnauthorized)
+				http.Error(w, "Missing token", http.StatusUnauthorized)
 				return
 			}
 
@@ -53,11 +53,14 @@ func authMiddleware(signingKey []byte) func(next http.Handler) http.Handler {
 			})
 			if err != nil {
 				log.Printf("%s: %v", r.RemoteAddr, err)
-				w.WriteHeader(http.StatusUnauthorized)
+				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			}
 
 			if claims, ok := t.Claims.(jwt.MapClaims); ok && t.Valid {
+				if (claims["iss"] != r.Host) || (claims["aud"] != r.RemoteAddr) {
+					http.Error(w, "Host or peer doesn't match", http.StatusUnauthorized)
+				}
 				r.Header.Add("username", claims["sub"].(string))
 			} else {
 				log.Printf("%s: Missing \"sub\" claim", r.RemoteAddr)
