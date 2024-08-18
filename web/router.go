@@ -60,6 +60,7 @@ func authMiddleware(signingKey []byte) func(next http.Handler) http.Handler {
 			if claims, ok := t.Claims.(jwt.MapClaims); ok && t.Valid {
 				if (claims["iss"] != r.Host) || (claims["aud"] != r.RemoteAddr) {
 					http.Error(w, "Host or peer doesn't match", http.StatusUnauthorized)
+					return
 				}
 				r.Header.Add("username", claims["sub"].(string))
 			} else {
