@@ -1,23 +1,49 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.jsx";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import {
+  createBrowserRouter,
+  redirect,
+  RouterProvider,
+} from "react-router-dom";
 import Index from "./pages/Index.jsx";
 import "@radix-ui/themes/styles.css";
+import { Theme } from "@radix-ui/themes";
+import { isLoggedIn } from "./auth.js";
+import Auth from "./pages/Auth.jsx";
+
+async function authLoader() {
+  console.log(await isLoggedIn())
+  return (await isLoggedIn()) ? null : redirect("/auth");
+}
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <Index />,
+    children: [
+      {
+        element: <App />,
+        loader: authLoader,
+        children: [{ index: true, element: <Index /> }],
+      },
+      {
+        path: "auth",
+        element: <Auth />,
+      },
+    ],
   },
+  // {
+  //   path: "/login",
+  //   element: <Auth />,
+  // },
 ]);
 
 document.body.style.margin = "0";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <App>
+    <Theme>
       <RouterProvider router={router} />
-    </App>
+    </Theme>
   </StrictMode>,
 );

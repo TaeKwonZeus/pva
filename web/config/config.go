@@ -14,6 +14,10 @@ type Config struct {
 	path string
 }
 
+func defaultConfig(path string) *Config {
+	return &Config{Port: 5101, path: path}
+}
+
 func NewConfig(path string) (*Config, error) {
 	config := new(Config)
 	config.path = path
@@ -33,7 +37,7 @@ func NewConfig(path string) (*Config, error) {
 		return nil, err
 	}
 
-	newConfig, err := json.MarshalIndent(Config{Port: 5101}, "", "    ")
+	newConfig, err := json.MarshalIndent(defaultConfig(path), "", "    ")
 	if err != nil {
 		log.Println("C")
 		return nil, err

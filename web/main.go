@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"github.com/TaeKwonZeus/pva/db"
@@ -23,7 +24,7 @@ const (
 func main() {
 	log.SetFlags(log.Ldate | log.Lshortfile)
 	if err := setupDirectory(); err != nil {
-		log.Fatal("Failed to set up /var/lib/pva-server; please run as root")
+		log.Fatalf("Failed to set up %s; please run as root", directory)
 	}
 
 	cfg, err := config.NewConfig(path.Join(directory, configFilename))
@@ -37,7 +38,11 @@ func main() {
 	}
 	defer pool.Close()
 
-	env := &handlers.Env{Pool: pool}
+	signingKey := make([]byte, 64)
+	if _, err = rand.Read(signingKey); err != nil {
+		log.Fatal(err)
+	}
+	env := &handlers.Env{Pool: pool, SigningKey: signingKey}
 
 	log.Printf("Listening at https://localhost:%d", cfg.Port)
 	err = http.ListenAndServeTLS(

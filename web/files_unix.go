@@ -12,13 +12,5 @@ func setupDirectory() error {
 		return err
 	}
 
-	//if err := exec.Command("chown", "-R", "root", directory).Run(); err != nil {
-	//	return err
-	//}
-	//
-	//if err := exec.Command("chmod", "-R", "600", directory).Run(); err != nil {
-	//	return err
-	//}
-
 	return nil
 }
