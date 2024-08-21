@@ -1,10 +1,10 @@
 package main
 
 import (
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"github.com/TaeKwonZeus/pva/db"
+	"github.com/TaeKwonZeus/pva/encryption"
 	"github.com/TaeKwonZeus/pva/handlers"
 	"io/fs"
 	"log"
@@ -38,11 +38,12 @@ func main() {
 	}
 	defer pool.Close()
 
-	signingKey := make([]byte, 64)
-	if _, err = rand.Read(signingKey); err != nil {
+	keys, err := encryption.NewKeys()
+	if err != nil {
 		log.Fatal(err)
 	}
-	env := &handlers.Env{Pool: pool, SigningKey: signingKey}
+	defer keys.Erase()
+	env := &handlers.Env{Pool: pool, Keys: keys}
 
 	log.Printf("Listening at https://localhost:%d", cfg.Port)
 	err = http.ListenAndServeTLS(

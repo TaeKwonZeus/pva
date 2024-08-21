@@ -1,8 +1,11 @@
 package handlers
 
-import "database/sql"
+import (
+	"database/sql"
+	"github.com/TaeKwonZeus/pva/encryption"
+)
 
 type Env struct {
-	Pool       *sql.DB
-	SigningKey []byte
+	Pool *sql.DB
+	Keys *encryption.Keys
 }

@@ -1,24 +1,8 @@
-import Cookies from "js-cookie";
-
-async function fetchWithAuth(url, options) {
-  if (!options) options = {};
-  const token = Cookies.get("token");
-  if (token) {
-    options.headers = {
-      ...options.headers,
-      Authorization: `Bearer ${token}`,
-    };
-  }
-
-  return fetch(url, options);
-}
-
 async function isLoggedIn() {
-  if (!Cookies.get("token")) return false;
-  return (await fetchWithAuth("/api/ping")).ok;
+  return (await fetch("/api/ping")).ok;
 }
 
-async function logIn(username, password, persist) {
+async function logIn(username, password) {
   const res = await fetch("/api/auth/login", {
     method: "POST",
     headers: {
@@ -30,22 +14,13 @@ async function logIn(username, password, persist) {
     }),
   });
 
-  if (!res.ok) {
-    return false;
-  }
-
-  const token = (await res.json()).token;
-  if (!persist) {
-    Cookies.set("token", token);
-  } else {
-    Cookies.set("token", token, { expires: 30 });
-  }
-
-  return true;
+  return res.ok;
 }
 
 async function logOut() {
-  Cookies.remove("token");
+  await fetch("/api/auth/revoke", {
+    method: "POST",
+  });
 }
 
 async function register(username, password) {
@@ -63,4 +38,4 @@ async function register(username, password) {
   return res.ok;
 }
 
-export { fetchWithAuth, isLoggedIn, logIn, logOut, register };
+export { isLoggedIn, logIn, logOut, register };

@@ -1,18 +1,12 @@
 package handlers
 
 import (
-	"bytes"
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"github.com/TaeKwonZeus/pva/encryption"
 	"github.com/golang-jwt/jwt"
-	"golang.org/x/crypto/argon2"
 	"net/http"
 	"time"
 )
@@ -22,13 +16,6 @@ type credentials struct {
 	Password string `json:"password"`
 }
 
-const (
-	nonceSize  = 12
-	saltSize   = 32
-	keySize    = 32
-	rsaKeySize = 4096
-)
-
 func (e *Env) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var c credentials
 	err := json.NewDecoder(r.Body).Decode(&c)
@@ -37,33 +24,61 @@ func (e *Env) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var encryptedKey string
-	err = e.Pool.QueryRow("SELECT encrypted_private_key FROM users WHERE username = ?", c.Username).Scan(&encryptedKey)
+	var salt string
+	var privateKeyEncrypted string
+	err = e.Pool.QueryRow("SELECT salt, private_key_encrypted FROM users WHERE username = ?", c.Username).
+		Scan(&salt, &privateKeyEncrypted)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	_, err = aesDecrypt(encryptedKey, c.Password, nil)
+	saltBytes, err := base64.StdEncoding.DecodeString(salt)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	privateKeyEncryptedBytes, err := base64.StdEncoding.DecodeString(privateKeyEncrypted)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	key := encryption.DeriveKey(c.Password, saltBytes)
+	_, err = encryption.AesDecrypt(privateKeyEncryptedBytes, key, nil)
 	if err != nil {
 		http.Error(w, "Failed to verify identity", http.StatusUnauthorized)
 		return
 	}
 
+	passwd, err := encryption.AesEncrypt([]byte(c.Password), e.Keys.PasswordKey(), nil)
+	if err != nil {
+		http.Error(w, "Failed to encrypt password", http.StatusInternalServerError)
+		return
+	}
+
 	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub": c.Username,
-		"iss": r.Host,
-		"aud": r.RemoteAddr,
-		"iat": time.Now().Unix(),
-	}).SignedString(e.SigningKey)
+		"sub":    c.Username,
+		"iss":    r.Host,
+		"aud":    r.RemoteAddr,
+		"iat":    time.Now().Unix(),
+		"exp":    time.Now().Add(time.Hour * 2).Unix(),
+		"passwd": base64.StdEncoding.EncodeToString(passwd),
+	}).SignedString(e.Keys.SigningKey())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    token,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+	})
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(`{"token": "` + token + `"}`))
 }
 
 func (e *Env) RegisterHandler(w http.ResponseWriter, r *http.Request) {
@@ -79,19 +94,31 @@ func (e *Env) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	privateKey, publicKey, err := generateKeypair()
+	privateKey, publicKey, err := encryption.CreateKeypair()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	encryptedPrivateKey, err := aesEncrypt(privateKey, c.Password, nil)
+	salt, err := encryption.GenerateSalt()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	key := encryption.DeriveKey(c.Password, salt)
+	privateKeyEncrypted, err := encryption.AesEncrypt(privateKey, key, nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	_, err = e.Pool.Exec("INSERT INTO users (username, public_key, encrypted_private_key) VALUES (?, ?, ?)",
-		c.Username, publicKey, encryptedPrivateKey)
+	_, err = e.Pool.Exec(
+		"INSERT INTO users (username, salt, public_key, private_key_encrypted, role) VALUES (?, ?, ?, ?, ?)",
+		c.Username,
+		base64.StdEncoding.EncodeToString(salt),
+		base64.StdEncoding.EncodeToString(publicKey),
+		base64.StdEncoding.EncodeToString(privateKeyEncrypted),
+		"None",
+	)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -100,71 +127,15 @@ func (e *Env) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-func generateKeypair() (private string, public string, err error) {
-	prKey, err := rsa.GenerateKey(rand.Reader, rsaKeySize)
-	if err != nil {
-		return "", "", err
-	}
-	pubKey := prKey.PublicKey
-
-	private = base64.StdEncoding.EncodeToString(x509.MarshalPKCS1PrivateKey(prKey))
-	public = base64.StdEncoding.EncodeToString(x509.MarshalPKCS1PublicKey(&pubKey))
-	return
-}
-
-func aesEncrypt(plaintext, password string, aad []byte) (string, error) {
-	// Derive key
-	salt := make([]byte, saltSize)
-	if _, err := rand.Read(salt); err != nil {
-		return "", err
-	}
-	key := argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, keySize)
-
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return "", err
-	}
-
-	nonce := make([]byte, nonceSize)
-	if _, err = rand.Read(nonce); err != nil {
-		return "", err
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", err
-	}
-
-	ciphertext := gcm.Seal(nil, nonce, []byte(plaintext), aad)
-	out := bytes.Join([][]byte{salt, nonce, ciphertext}, nil)
-
-	return base64.StdEncoding.EncodeToString(out), nil
-}
-
-func aesDecrypt(ciphertext, password string, aad []byte) (string, error) {
-	ciphertextBytes, err := base64.StdEncoding.DecodeString(ciphertext)
-	if err != nil {
-		return "", err
-	}
-	salt := ciphertextBytes[:saltSize]
-	nonce := ciphertextBytes[saltSize : saltSize+nonceSize]
-	ciphertextBytes = ciphertextBytes[saltSize+nonceSize:]
-
-	key := argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, keySize)
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return "", err
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", err
-	}
-
-	plaintext, err := gcm.Open(nil, nonce, ciphertextBytes, aad)
-	if err != nil {
-		return "", err
-	}
-
-	return string(plaintext), nil
+func (_ *Env) Revoke(w http.ResponseWriter, _ *http.Request) {
+	// TODO fix
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    "",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   -1,
+	})
+	w.WriteHeader(http.StatusOK)
 }
