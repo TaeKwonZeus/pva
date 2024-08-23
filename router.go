@@ -13,48 +13,31 @@ func newRouter(e *handlers.Env) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 
-	r.Mount("/api/auth", authRouter(e))
-	r.Mount("/api", apiRouter(e))
+	r.Route("/api/auth", func(r chi.Router) {
+		r.Use(middleware.RequestID)
 
-	r.Mount("/", frontendRouter())
-
-	return r
-}
-
-func authRouter(e *handlers.Env) http.Handler {
-	r := chi.NewRouter()
-	r.Use(middleware.RequestID)
-
-	r.Post("/login", e.LoginHandler)
-	r.Post("/register", e.RegisterHandler)
-	r.Post("/revoke", e.Revoke)
-
-	return r
-}
-
-func apiRouter(e *handlers.Env) http.Handler {
-	r := chi.NewRouter()
-	r.Use(middleware.RequestID)
-	r.Use(encryption.AuthMiddleware(e.Keys.SigningKey()))
-
-	r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("pong"))
+		r.Post("/login", e.LoginHandler)
+		r.Post("/register", e.RegisterHandler)
+		r.Post("/revoke", e.Revoke)
 	})
 
-	return r
-}
+	r.Route("/api", func(r chi.Router) {
+		r.Use(middleware.RequestID)
+		r.Use(encryption.AuthMiddleware(e.Keys.SigningKey()))
 
-func frontendRouter() http.Handler {
-	r := chi.NewRouter()
-
-	r.Get("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFileFS(w, r, frontend.Embed(), "favicon.ico")
+		r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte("pong"))
+		})
 	})
 
-	r.Mount("/assets/", http.FileServerFS(frontend.Embed()))
-
-	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFileFS(w, r, frontend.Embed(), "index.html")
+	r.Route("/", func(r chi.Router) {
+		r.Get("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFileFS(w, r, frontend.Embed(), "favicon.ico")
+		})
+		r.Mount("/assets/", http.FileServerFS(frontend.Embed()))
+		r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFileFS(w, r, frontend.Embed(), "index.html")
+		})
 	})
 
 	return r
