@@ -128,14 +128,10 @@ func (e *Env) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (_ *Env) Revoke(w http.ResponseWriter, _ *http.Request) {
-	// TODO fix
 	http.SetCookie(w, &http.Cookie{
-		Name:     "token",
-		Value:    "",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-		MaxAge:   -1,
+		Name:   "token",
+		Value:  "",
+		Path:   "/",
+		MaxAge: -1,
 	})
-	w.WriteHeader(http.StatusOK)
 }

@@ -25,7 +25,6 @@ func NewConfig(path string) (*Config, error) {
 	file, err := os.ReadFile(path)
 	if err == nil {
 		if err = json.Unmarshal(file, config); err != nil {
-			log.Println("A")
 			return nil, err
 		}
 
@@ -33,18 +32,16 @@ func NewConfig(path string) (*Config, error) {
 	}
 
 	if !errors.Is(err, fs.ErrNotExist) {
-		log.Println("B")
 		return nil, err
 	}
 
-	newConfig, err := json.MarshalIndent(defaultConfig(path), "", "    ")
+	config = defaultConfig(path)
+	newConfig, err := json.MarshalIndent(config, "", "    ")
 	if err != nil {
 		log.Println("C")
 		return nil, err
 	}
-
 	if err = os.WriteFile(path, newConfig, 0600); err != nil {
-		log.Println("D")
 		return nil, err
 	}
 

@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"github.com/golang-jwt/jwt"
 	"golang.org/x/crypto/argon2"
-	"log"
 	"net/http"
 )
 
@@ -142,7 +141,6 @@ func AuthMiddleware(signingKey []byte) func(next http.Handler) http.Handler {
 				return signingKey, nil
 			})
 			if err != nil {
-				log.Printf("%s: %v", r.RemoteAddr, err)
 				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			}
