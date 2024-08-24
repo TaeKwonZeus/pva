@@ -26,8 +26,12 @@ CREATE TABLE IF NOT EXISTS passwords
     vault_id           INTEGER REFERENCES vaults (id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS vault_access
+CREATE TABLE IF NOT EXISTS vault_keys
 (
     user_id  INTEGER REFERENCES users (id) ON DELETE CASCADE,
-    vault_id INTEGER REFERENCES vaults (id) ON DELETE CASCADE
+    vault_id INTEGER REFERENCES vaults (id) ON DELETE CASCADE,
+    -- Encrypted with user's public key
+    vault_key_encrypted TEXT NOT NULL,
+
+    PRIMARY KEY (user_id, vault_id)
 );

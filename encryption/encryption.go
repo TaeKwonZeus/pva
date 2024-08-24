@@ -6,11 +6,9 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
-	"fmt"
-	"github.com/golang-jwt/jwt"
 	"golang.org/x/crypto/argon2"
-	"net/http"
 )
 
 const (
@@ -61,7 +59,7 @@ func (k *Keys) Erase() {
 	}
 }
 
-func CreateKeypair() (private []byte, public []byte, err error) {
+func NewKeypair() (private []byte, public []byte, err error) {
 	prKey, err := rsa.GenerateKey(rand.Reader, rsaKeySize)
 	if err != nil {
 		return
@@ -69,6 +67,14 @@ func CreateKeypair() (private []byte, public []byte, err error) {
 	pubKey := prKey.PublicKey
 
 	return x509.MarshalPKCS1PrivateKey(prKey), x509.MarshalPKCS1PublicKey(&pubKey), nil
+}
+
+func NewAesKey() ([]byte, error) {
+	key := make([]byte, aesKeySize)
+	if _, err := rand.Read(key); err != nil {
+		return nil, err
+	}
+	return key, nil
 }
 
 func GenerateSalt() ([]byte, error) {
@@ -123,42 +129,10 @@ func AesDecrypt(ciphertext, key, aad []byte) ([]byte, error) {
 	return plaintext, nil
 }
 
-func AuthMiddleware(signingKey []byte) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			tokenCookie, err := r.Cookie("token")
-			if err != nil || tokenCookie.Value == "" {
-				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-				return
-			}
-			token := tokenCookie.Value
-
-			t, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-				}
-
-				return signingKey, nil
-			})
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusUnauthorized)
-				return
-			}
-
-			claims, ok := t.Claims.(jwt.MapClaims)
-			sub, subOk := claims["sub"].(string)
-			if !(ok && t.Valid) || !subOk {
-				http.Error(w, "Invalid token", http.StatusUnauthorized)
-				return
-			}
-
-			r.Header.Add("username", sub)
-			// encrypted password for cryptographic shit
-			if passwd, ok := claims["passwd"].(string); ok {
-				r.Header.Add("passwd", passwd)
-			}
-
-			next.ServeHTTP(w, r)
-		})
+func RsaEncrypt(plaintext, key, label []byte) ([]byte, error) {
+	pk, err := x509.ParsePKCS1PublicKey(key)
+	if err != nil {
+		return nil, err
 	}
+	return rsa.EncryptOAEP(sha256.New(), rand.Reader, pk, plaintext, label)
 }

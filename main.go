@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/TaeKwonZeus/pva/db"
+	"github.com/TaeKwonZeus/pva/data"
 	"github.com/TaeKwonZeus/pva/encryption"
 	"github.com/TaeKwonZeus/pva/handlers"
 	"io/fs"
@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	dbFilename     = "db.sqlite"
+	dbFilename     = "data.sqlite"
 	configFilename = "config.json"
 	certFilename   = "cert.pem"
 	keyFilename    = "key.pem"
@@ -32,18 +32,18 @@ func main() {
 		log.Fatal(err)
 	}
 
-	pool, err := db.NewPool(path.Join(directory, dbFilename))
+	db, err := data.NewDB(path.Join(directory, dbFilename))
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer pool.Close()
+	defer db.Close()
 
 	keys, err := encryption.NewKeys()
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer keys.Erase()
-	env := &handlers.Env{Pool: pool, Keys: keys}
+	env := &handlers.Env{DB: db, Keys: keys}
 
 	log.Printf("Listening at https://localhost:%d", cfg.Port)
 	err = http.ListenAndServeTLS(

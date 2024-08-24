@@ -1,13 +1,14 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"github.com/TaeKwonZeus/pva/data"
 	"github.com/TaeKwonZeus/pva/encryption"
 	"github.com/golang-jwt/jwt"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -26,36 +27,23 @@ func (e *Env) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	remember := r.URL.Query().Get("remember") == "true"
 
-	var salt string
-	var privateKeyEncrypted string
-	err = e.Pool.QueryRow("SELECT salt, private_key_encrypted FROM users WHERE username = ?", c.Username).
-		Scan(&salt, &privateKeyEncrypted)
+	user, err := e.DB.GetUserByUsername(c.Username)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 
-	saltBytes, err := base64.StdEncoding.DecodeString(salt)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	privateKeyEncryptedBytes, err := base64.StdEncoding.DecodeString(privateKeyEncrypted)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	key := encryption.DeriveKey(c.Password, saltBytes)
-	_, err = encryption.AesDecrypt(privateKeyEncryptedBytes, key, nil)
+	key := encryption.DeriveKey(c.Password, user.Salt)
+	_, err = encryption.AesDecrypt(user.PrivateKeyEncrypted, key, nil)
 	if err != nil {
 		http.Error(w, "Failed to verify identity", http.StatusUnauthorized)
 		return
 	}
 
+	// User password encrypted with e.Keys.PasswordKey()
 	passwd, err := encryption.AesEncrypt([]byte(c.Password), e.Keys.PasswordKey(), nil)
 	if err != nil {
-		http.Error(w, "Failed to encrypt password", http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 
@@ -63,11 +51,11 @@ func (e *Env) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if remember {
 		exp = time.Now().AddDate(0, 1, 0)
 	} else {
-		exp = time.Now().Add(time.Hour * 2)
+		exp = time.Now().Add(time.Hour * 4)
 	}
 
 	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub":    c.Username,
+		"sub":    strconv.Itoa(user.Id),
 		"iss":    r.Host,
 		"aud":    r.RemoteAddr,
 		"iat":    time.Now().Unix(),
@@ -75,7 +63,7 @@ func (e *Env) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		"passwd": base64.StdEncoding.EncodeToString(passwd),
 	}).SignedString(e.Keys.SigningKey())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 
@@ -101,38 +89,36 @@ func (e *Env) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !errors.Is(e.Pool.QueryRow("SELECT username FROM users WHERE username = ?", c.Username).Scan(), sql.ErrNoRows) {
-		http.Error(w, "User already exists", http.StatusBadRequest)
-		return
-	}
-
-	privateKey, publicKey, err := encryption.CreateKeypair()
+	privateKey, publicKey, err := encryption.NewKeypair()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 	salt, err := encryption.GenerateSalt()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 	key := encryption.DeriveKey(c.Password, salt)
 	privateKeyEncrypted, err := encryption.AesEncrypt(privateKey, key, nil)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 
-	_, err = e.Pool.Exec(
-		"INSERT INTO users (username, salt, public_key, private_key_encrypted, role) VALUES (?, ?, ?, ?, ?)",
-		c.Username,
-		base64.StdEncoding.EncodeToString(salt),
-		base64.StdEncoding.EncodeToString(publicKey),
-		base64.StdEncoding.EncodeToString(privateKeyEncrypted),
-		"None",
-	)
+	err = e.DB.AddUser(&data.User{
+		Username:            c.Username,
+		Salt:                salt,
+		PublicKey:           publicKey,
+		PrivateKeyEncrypted: privateKeyEncrypted,
+		Role:                data.RoleAdmin,
+	})
+	if errors.Is(err, data.ErrorConflict) {
+		http.Error(w, "User already exists", http.StatusConflict)
+		return
+	}
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 

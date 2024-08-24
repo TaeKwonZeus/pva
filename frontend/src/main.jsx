@@ -11,9 +11,10 @@ import "@radix-ui/themes/styles.css";
 import { Theme } from "@radix-ui/themes";
 import { isLoggedIn } from "./auth.js";
 import Auth from "./pages/Auth.jsx";
+import Passwords from "./pages/Passwords.jsx";
 
 async function authLoader() {
-  console.log(await isLoggedIn())
+  console.log(await isLoggedIn());
   return (await isLoggedIn()) ? null : redirect("/auth");
 }
 
@@ -24,7 +25,13 @@ const router = createBrowserRouter([
       {
         element: <App />,
         loader: authLoader,
-        children: [{ index: true, element: <Index /> }],
+        children: [
+          { index: true, element: <Index /> },
+          {
+            path: "/passwords",
+            element: <Passwords />,
+          },
+        ],
       },
       {
         path: "auth",

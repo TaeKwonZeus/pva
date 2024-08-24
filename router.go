@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/TaeKwonZeus/pva/encryption"
 	"github.com/TaeKwonZeus/pva/frontend"
 	"github.com/TaeKwonZeus/pva/handlers"
 	"github.com/go-chi/chi/v5"
@@ -9,25 +8,26 @@ import (
 	"net/http"
 )
 
-func newRouter(e *handlers.Env) http.Handler {
+func newRouter(env *handlers.Env) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 
 	r.Route("/api/auth", func(r chi.Router) {
 		r.Use(middleware.RequestID)
 
-		r.Post("/login", e.LoginHandler)
-		r.Post("/register", e.RegisterHandler)
-		r.Post("/revoke", e.Revoke)
+		r.Post("/login", env.LoginHandler)
+		r.Post("/register", env.RegisterHandler)
+		r.Post("/revoke", env.Revoke)
 	})
 
 	r.Route("/api", func(r chi.Router) {
 		r.Use(middleware.RequestID)
-		r.Use(encryption.AuthMiddleware(e.Keys.SigningKey()))
+		r.Use(env.AuthMiddleware)
 
 		r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte("pong"))
 		})
+		r.Post("/vaults/new", env.NewVaultHandler)
 	})
 
 	r.Route("/", func(r chi.Router) {
