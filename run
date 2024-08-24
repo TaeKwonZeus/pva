@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/sh
 
 cd frontend
 npm run build
