@@ -2,8 +2,8 @@ async function isLoggedIn() {
   return (await fetch("/api/ping")).ok;
 }
 
-async function logIn(username, password) {
-  const res = await fetch("/api/auth/login", {
+async function logIn(username, password, remember) {
+  const res = await fetch(`/api/auth/login?remember=${remember}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

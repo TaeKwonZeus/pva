@@ -24,6 +24,8 @@ func (e *Env) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	remember := r.URL.Query().Get("remember") == "true"
+
 	var salt string
 	var privateKeyEncrypted string
 	err = e.Pool.QueryRow("SELECT salt, private_key_encrypted FROM users WHERE username = ?", c.Username).
@@ -57,12 +59,19 @@ func (e *Env) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var exp time.Time
+	if remember {
+		exp = time.Now().AddDate(0, 1, 0)
+	} else {
+		exp = time.Now().Add(time.Hour * 2)
+	}
+
 	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub":    c.Username,
 		"iss":    r.Host,
 		"aud":    r.RemoteAddr,
 		"iat":    time.Now().Unix(),
-		"exp":    time.Now().Add(time.Hour * 2).Unix(),
+		"exp":    exp.Unix(),
 		"passwd": base64.StdEncoding.EncodeToString(passwd),
 	}).SignedString(e.Keys.SigningKey())
 	if err != nil {
@@ -70,15 +79,18 @@ func (e *Env) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
+	cookie := &http.Cookie{
 		Name:     "token",
 		Value:    token,
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
-	})
-	w.WriteHeader(http.StatusOK)
+	}
+	if remember {
+		cookie.Expires = exp
+	}
+	http.SetCookie(w, cookie)
 }
 
 func (e *Env) RegisterHandler(w http.ResponseWriter, r *http.Request) {
