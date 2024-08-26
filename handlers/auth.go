@@ -20,7 +20,7 @@ type jwtClaims struct {
 	Passwd string `json:"passwd,omitempty"`
 }
 
-func (j *jwtClaims) Valid() error {
+func (j jwtClaims) Valid() error {
 	if j.Passwd == "" {
 		return errors.New("jwt claims missing passwd")
 	}
@@ -38,7 +38,7 @@ func (e *Env) AuthMiddleware(next http.Handler) http.Handler {
 		}
 		token := tokenCookie.Value
 
-		t, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+		t, err := jwt.ParseWithClaims(token, new(jwtClaims), func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
@@ -52,6 +52,7 @@ func (e *Env) AuthMiddleware(next http.Handler) http.Handler {
 
 		claims, ok := t.Claims.(*jwtClaims)
 		if !t.Valid || !ok {
+			log.Println(t.Valid, ok)
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
 			return
 		}
@@ -126,13 +127,15 @@ func (e *Env) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		exp = time.Now().Add(time.Hour * 4)
 	}
 
-	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub":    strconv.Itoa(user.Id),
-		"iss":    r.Host,
-		"aud":    r.RemoteAddr,
-		"iat":    time.Now().Unix(),
-		"exp":    exp.Unix(),
-		"passwd": base64.StdEncoding.EncodeToString(passwd),
+	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, &jwtClaims{
+		StandardClaims: jwt.StandardClaims{
+			Subject:   strconv.Itoa(user.Id),
+			Issuer:    r.Host,
+			Audience:  r.RemoteAddr,
+			IssuedAt:  time.Now().Unix(),
+			ExpiresAt: exp.Unix(),
+		},
+		Passwd: base64.StdEncoding.EncodeToString(passwd),
 	}).SignedString(e.Keys.SigningKey())
 	if err != nil {
 		serverError(w, err)
