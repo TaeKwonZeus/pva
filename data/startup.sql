@@ -2,10 +2,11 @@ CREATE TABLE IF NOT EXISTS users
 (
     id                    INTEGER PRIMARY KEY,
     username              TEXT NOT NULL UNIQUE,
+    role                  TEXT NOT NULL,
+
     salt                  TEXT NOT NULL,
     public_key            TEXT NOT NULL,
-    private_key_encrypted TEXT NOT NULL,
-    role                  TEXT NOT NULL
+    private_key_encrypted TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS vaults
@@ -30,6 +31,7 @@ CREATE TABLE IF NOT EXISTS vault_keys
 (
     user_id  INTEGER REFERENCES users (id) ON DELETE CASCADE,
     vault_id INTEGER REFERENCES vaults (id) ON DELETE CASCADE,
+
     -- Encrypted with user's public key
     vault_key_encrypted TEXT NOT NULL,
 

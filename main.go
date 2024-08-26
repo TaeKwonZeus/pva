@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/TaeKwonZeus/pva/data"
-	"github.com/TaeKwonZeus/pva/encryption"
 	"github.com/TaeKwonZeus/pva/handlers"
 	"io/fs"
 	"log"
@@ -15,7 +14,7 @@ import (
 )
 
 const (
-	dbFilename     = "data.sqlite"
+	dbFilename     = "db.sqlite"
 	configFilename = "config.json"
 	certFilename   = "cert.pem"
 	keyFilename    = "key.pem"
@@ -32,18 +31,19 @@ func main() {
 		log.Fatal(err)
 	}
 
-	db, err := data.NewDB(path.Join(directory, dbFilename))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
-	keys, err := encryption.NewKeys()
+	keys, err := data.NewKeys()
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer keys.Erase()
-	env := &handlers.Env{DB: db, Keys: keys}
+
+	store, err := data.NewStore(path.Join(directory, dbFilename), keys.PasswordKey())
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer store.Close()
+
+	env := &handlers.Env{Store: store, Keys: keys}
 
 	log.Printf("Listening at https://localhost:%d", cfg.Port)
 	err = http.ListenAndServeTLS(

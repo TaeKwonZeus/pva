@@ -1,4 +1,4 @@
-package encryption
+package data
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"errors"
 	"golang.org/x/crypto/argon2"
 )
 
@@ -59,7 +60,16 @@ func (k *Keys) Erase() {
 	}
 }
 
-func NewKeypair() (private []byte, public []byte, err error) {
+func IsErrConflict(err error) bool {
+	for _, e := range ConflictErrors {
+		if errors.Is(err, e) {
+			return true
+		}
+	}
+	return false
+}
+
+func newKeypair() (private []byte, public []byte, err error) {
 	prKey, err := rsa.GenerateKey(rand.Reader, rsaKeySize)
 	if err != nil {
 		return
@@ -69,7 +79,7 @@ func NewKeypair() (private []byte, public []byte, err error) {
 	return x509.MarshalPKCS1PrivateKey(prKey), x509.MarshalPKCS1PublicKey(&pubKey), nil
 }
 
-func NewAesKey() ([]byte, error) {
+func newAesKey() ([]byte, error) {
 	key := make([]byte, aesKeySize)
 	if _, err := rand.Read(key); err != nil {
 		return nil, err
@@ -77,7 +87,7 @@ func NewAesKey() ([]byte, error) {
 	return key, nil
 }
 
-func GenerateSalt() ([]byte, error) {
+func generateSalt() ([]byte, error) {
 	salt := make([]byte, saltSize)
 	if _, err := rand.Read(salt); err != nil {
 		return nil, err
@@ -85,11 +95,11 @@ func GenerateSalt() ([]byte, error) {
 	return salt, nil
 }
 
-func DeriveKey(password string, salt []byte) []byte {
+func deriveKey(password string, salt []byte) []byte {
 	return argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, aesKeySize)
 }
 
-func AesEncrypt(plaintext, key, aad []byte) ([]byte, error) {
+func aesEncrypt(plaintext, key, aad []byte) ([]byte, error) {
 	nonce := make([]byte, nonceSize)
 	if _, err := rand.Read(nonce); err != nil {
 		return nil, err
@@ -108,7 +118,7 @@ func AesEncrypt(plaintext, key, aad []byte) ([]byte, error) {
 	return bytes.Join([][]byte{nonce, ciphertext}, nil), nil
 }
 
-func AesDecrypt(ciphertext, key, aad []byte) ([]byte, error) {
+func aesDecrypt(ciphertext, key, aad []byte) ([]byte, error) {
 	nonce := ciphertext[:nonceSize]
 	ciphertext = ciphertext[nonceSize:]
 
@@ -129,10 +139,18 @@ func AesDecrypt(ciphertext, key, aad []byte) ([]byte, error) {
 	return plaintext, nil
 }
 
-func RsaEncrypt(plaintext, key, label []byte) ([]byte, error) {
+func rsaEncrypt(plaintext, key, label []byte) ([]byte, error) {
 	pk, err := x509.ParsePKCS1PublicKey(key)
 	if err != nil {
 		return nil, err
 	}
 	return rsa.EncryptOAEP(sha256.New(), rand.Reader, pk, plaintext, label)
+}
+
+func rsaDecrypt(ciphertext, key, label []byte) ([]byte, error) {
+	pk, err := x509.ParsePKCS1PrivateKey(key)
+	if err != nil {
+		return nil, err
+	}
+	return rsa.DecryptOAEP(sha256.New(), rand.Reader, pk, ciphertext, label)
 }

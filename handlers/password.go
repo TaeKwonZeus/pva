@@ -2,9 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
-	"errors"
 	"github.com/TaeKwonZeus/pva/data"
-	"github.com/TaeKwonZeus/pva/encryption"
 	"log"
 	"net/http"
 )
@@ -20,7 +18,6 @@ func (e *Env) NewVaultHandler(w http.ResponseWriter, r *http.Request) {
 
 	user, ok := r.Context().Value("user").(*data.User)
 	if !ok {
-		log.Println("could not get user")
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
@@ -30,22 +27,11 @@ func (e *Env) NewVaultHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	key, err := encryption.NewAesKey()
-	if err != nil {
-		serverError(w, err)
-		return
-	}
-
-	vaultKeyEncrypted, err := encryption.RsaEncrypt(key, user.PublicKey, []byte(body.Name))
-	if err != nil {
-		serverError(w, err)
-		return
-	}
-
-	err = e.DB.AddVault(&data.Vault{Name: body.Name, OwnerId: user.Id}, vaultKeyEncrypted)
-	if errors.Is(err, data.ErrorConflict) {
-		log.Println("Unexpected conflict:", err)
-		http.Error(w, "conflict while creating vault", http.StatusConflict)
+	_, err := e.Store.CreateVault(&data.Vault{
+		Name: body.Name,
+	}, user)
+	if data.IsErrConflict(err) {
+		http.Error(w, "Vault already exists", http.StatusConflict)
 		return
 	}
 	if err != nil {
@@ -54,4 +40,37 @@ func (e *Env) NewVaultHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
+}
+
+func (e *Env) GetVaultsHandler(w http.ResponseWriter, r *http.Request) {
+	user, ok := r.Context().Value("user").(*data.User)
+	if !ok {
+		log.Println("could not get user")
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	password, ok := r.Context().Value("password").(string)
+	if !ok {
+		log.Println("could not get password")
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	if !data.CheckPermission(user.Role, data.PermissionViewPasswords) {
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		return
+	}
+
+	vaults, err := e.Store.GetVaults(user, password)
+	if err != nil {
+		serverError(w, err)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(vaults)
+	if err != nil {
+		serverError(w, err)
+		return
+	}
 }

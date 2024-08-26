@@ -1,16 +1,96 @@
 package handlers
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/TaeKwonZeus/pva/data"
-	"github.com/TaeKwonZeus/pva/encryption"
 	"github.com/golang-jwt/jwt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
 )
+
+type jwtClaims struct {
+	jwt.StandardClaims
+
+	Passwd string `json:"passwd,omitempty"`
+}
+
+func (j *jwtClaims) Valid() error {
+	if j.Passwd == "" {
+		return errors.New("jwt claims missing passwd")
+	}
+	return j.StandardClaims.Valid()
+}
+
+// AuthMiddleware verifies the JWT token, fetches the calling user from e.db, decrypts password in JWT and stores
+// the user and the password in r.Context().
+func (e *Env) AuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tokenCookie, err := r.Cookie("token")
+		if err != nil || tokenCookie.Value == "" {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
+		}
+		token := tokenCookie.Value
+
+		t, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+
+			return e.Keys.SigningKey(), nil
+		})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		claims, ok := t.Claims.(*jwtClaims)
+		if !t.Valid || !ok {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+		id, err := strconv.Atoi(claims.Subject)
+		if err != nil {
+			http.Error(w, "Failed to parse sub", http.StatusUnauthorized)
+			return
+		}
+
+		user, err := e.Store.GetUser(id)
+		if err != nil {
+			http.Error(w, "Failed to get user", http.StatusUnauthorized)
+			return
+		}
+		if user == nil {
+			http.Error(w, "User not found", http.StatusUnauthorized)
+			return
+		}
+
+		passwdBytes, err := base64.StdEncoding.DecodeString(claims.Passwd)
+		if err != nil {
+			log.Println("Failed to decode passwd")
+			http.Error(w, "Failed to decode passwd", http.StatusUnauthorized)
+			return
+		}
+
+		password, err := e.Store.DecryptPassword(passwdBytes)
+		if err != nil {
+			http.Error(w, "Failed to decrypt password", http.StatusUnauthorized)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), "user", user)
+		ctx = context.WithValue(ctx, "password", password)
+		r = r.WithContext(ctx)
+
+		next.ServeHTTP(w, r)
+	})
+}
 
 type credentials struct {
 	Username string `json:"username"`
@@ -25,27 +105,19 @@ func (e *Env) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	verified, user := e.Store.VerifyPassword(c.Username, c.Password)
+	if !verified {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	passwd, err := e.Store.EncryptPassword(c.Password)
+	if err != nil {
+		serverError(w, err)
+		return
+	}
+
 	remember := r.URL.Query().Get("remember") == "true"
-
-	user, err := e.DB.GetUserByUsername(c.Username)
-	if err != nil {
-		serverError(w, err)
-		return
-	}
-
-	key := encryption.DeriveKey(c.Password, user.Salt)
-	_, err = encryption.AesDecrypt(user.PrivateKeyEncrypted, key, nil)
-	if err != nil {
-		http.Error(w, "Failed to verify identity", http.StatusUnauthorized)
-		return
-	}
-
-	// User password encrypted with e.Keys.PasswordKey()
-	passwd, err := encryption.AesEncrypt([]byte(c.Password), e.Keys.PasswordKey(), nil)
-	if err != nil {
-		serverError(w, err)
-		return
-	}
 
 	var exp time.Time
 	if remember {
@@ -89,31 +161,11 @@ func (e *Env) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	privateKey, publicKey, err := encryption.NewKeypair()
-	if err != nil {
-		serverError(w, err)
-		return
-	}
-	salt, err := encryption.GenerateSalt()
-	if err != nil {
-		serverError(w, err)
-		return
-	}
-	key := encryption.DeriveKey(c.Password, salt)
-	privateKeyEncrypted, err := encryption.AesEncrypt(privateKey, key, nil)
-	if err != nil {
-		serverError(w, err)
-		return
-	}
-
-	err = e.DB.AddUser(&data.User{
-		Username:            c.Username,
-		Salt:                salt,
-		PublicKey:           publicKey,
-		PrivateKeyEncrypted: privateKeyEncrypted,
-		Role:                data.RoleAdmin,
-	})
-	if errors.Is(err, data.ErrorConflict) {
+	_, err = e.Store.CreateUser(&data.User{
+		Username: c.Username,
+		Role:     data.RoleAdmin,
+	}, c.Password)
+	if data.IsErrConflict(err) {
 		http.Error(w, "User already exists", http.StatusConflict)
 		return
 	}

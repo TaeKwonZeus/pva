@@ -6,46 +6,27 @@ import (
 	"encoding/base64"
 	"errors"
 	"github.com/mattn/go-sqlite3"
-	_ "github.com/mattn/go-sqlite3"
+	"log"
 )
 
 //go:embed startup.sql
 var startupQuery string
 
-type DB struct {
-	db *sql.DB
+type db struct {
+	pool *sql.DB
 }
 
-// ErrorConflict is returned on primary key or unique violations.
-var ErrorConflict = errors.Join(sqlite3.ErrConstraintPrimaryKey, sqlite3.ErrConstraintUnique)
+var ConflictErrors = []error{sqlite3.ErrConstraintUnique, sqlite3.ErrConstraintPrimaryKey}
 
-func NewDB(path string) (*DB, error) {
-	pool, err := sql.Open("sqlite3", path)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = pool.Exec(startupQuery)
-	if err != nil {
-		return nil, err
-	}
-
-	return &DB{db: pool}, nil
-}
-
-func (d *DB) Close() error {
-	return d.db.Close()
-}
-
-func (d *DB) AddUser(user *User) error {
-	res, err := d.db.Exec(
-		`INSERT INTO users (username, salt, public_key, private_key_encrypted, role)
+func (d *db) createUser(user *User) error {
+	res, err := d.pool.Exec(
+		`INSERT INTO users (username, role, salt, public_key, private_key_encrypted)
 		VALUES (?, ?, ?, ?, ?)`,
 		user.Username,
-		base64.StdEncoding.EncodeToString(user.Salt),
-		base64.StdEncoding.EncodeToString(user.PublicKey),
-		base64.StdEncoding.EncodeToString(user.PrivateKeyEncrypted),
 		user.Role,
+		base64.StdEncoding.EncodeToString(user.salt),
+		base64.StdEncoding.EncodeToString(user.publicKey),
+		base64.StdEncoding.EncodeToString(user.privateKeyEncrypted),
 	)
 	if err != nil {
 		return err
@@ -56,75 +37,80 @@ func (d *DB) AddUser(user *User) error {
 	return nil
 }
 
-func (d *DB) GetUser(id int) (user *User, err error) {
+func (d *db) getUser(id int) (user *User, err error) {
 	user = &User{Id: id}
 
 	var salt string
 	var publicKey string
 	var privateKeyEncrypted string
 
-	row := d.db.QueryRow(`SELECT username, salt, public_key, private_key_encrypted, role
+	row := d.pool.QueryRow(`SELECT username, role, salt, public_key, private_key_encrypted
 		FROM users WHERE id=?`, id)
-	err = row.Scan(&user.Username, &salt, &publicKey, &privateKeyEncrypted, &user.Role)
+	err = row.Scan(&user.Username, &user.Role, &salt, &publicKey, &privateKeyEncrypted)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 
-	user.Salt, err = base64.StdEncoding.DecodeString(salt)
+	user.salt, err = base64.StdEncoding.DecodeString(salt)
 	if err != nil {
+		log.Println("failed to decode salt")
 		return nil, err
 	}
-	user.PublicKey, err = base64.StdEncoding.DecodeString(publicKey)
+	user.publicKey, err = base64.StdEncoding.DecodeString(publicKey)
 	if err != nil {
+		log.Println("failed to decode public key")
 		return nil, err
 	}
-	user.PrivateKeyEncrypted, err = base64.StdEncoding.DecodeString(privateKeyEncrypted)
+	user.privateKeyEncrypted, err = base64.StdEncoding.DecodeString(privateKeyEncrypted)
 	if err != nil {
+		log.Println("failed to decode private key")
 		return nil, err
 	}
 
 	return
 }
 
-func (d *DB) GetUserByUsername(username string) (user *User, err error) {
+func (d *db) getUserByUsername(username string) (user *User, err error) {
 	user = &User{Username: username}
 
 	var salt string
 	var publicKey string
 	var privateKeyEncrypted string
 
-	row := d.db.QueryRow(`SELECT id, salt, public_key, private_key_encrypted, role
+	row := d.pool.QueryRow(`SELECT id, role, salt, public_key, private_key_encrypted
 		FROM users WHERE username=?`, username)
-	err = row.Scan(&user.Id, &salt, &publicKey, &privateKeyEncrypted, &user.Role)
+	err = row.Scan(&user.Id, &user.Role, &salt, &publicKey, &privateKeyEncrypted)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 
-	user.Salt, err = base64.StdEncoding.DecodeString(salt)
+	user.salt, err = base64.StdEncoding.DecodeString(salt)
 	if err != nil {
+		log.Println("failed to decode salt")
 		return nil, err
 	}
-	user.PublicKey, err = base64.StdEncoding.DecodeString(publicKey)
+	user.publicKey, err = base64.StdEncoding.DecodeString(publicKey)
 	if err != nil {
+		log.Println("failed to decode public key")
 		return nil, err
 	}
-	user.PrivateKeyEncrypted, err = base64.StdEncoding.DecodeString(privateKeyEncrypted)
+	user.privateKeyEncrypted, err = base64.StdEncoding.DecodeString(privateKeyEncrypted)
 	if err != nil {
+		log.Println("failed to decode private key")
 		return nil, err
 	}
 
 	return
 }
 
-// AddVault adds a new vault and a new record in vault_keys
-func (d *DB) AddVault(vault *Vault, vaultKeyEncrypted []byte) error {
-	tx, err := d.db.Begin()
+func (d *db) createVault(vault *Vault, vaultKeyEncrypted []byte) error {
+	tx, err := d.pool.Begin()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	res, err := tx.Exec(`INSERT INTO vaults (name, owner_id) VALUES (?, ?)`,
+	res, err := tx.Exec("INSERT INTO vaults (name, owner_id) VALUES (?, ?)",
 		vault.Name, vault.OwnerId)
 	if err != nil {
 		return err
@@ -132,7 +118,7 @@ func (d *DB) AddVault(vault *Vault, vaultKeyEncrypted []byte) error {
 	id, _ := res.LastInsertId()
 	vault.Id = int(id)
 
-	_, err = tx.Exec(`INSERT INTO vault_keys (user_id, vault_id, vault_key_encrypted) VALUES (?, ?, ?)`,
+	_, err = tx.Exec("INSERT INTO vault_keys (user_id, vault_id, vault_key_encrypted) VALUES (?, ?, ?)",
 		vault.OwnerId, vault.Id, base64.StdEncoding.EncodeToString(vaultKeyEncrypted))
 	if err != nil {
 		return err
@@ -143,4 +129,88 @@ func (d *DB) AddVault(vault *Vault, vaultKeyEncrypted []byte) error {
 	}
 
 	return nil
+}
+
+type vaultAndKey struct {
+	vault        *Vault
+	keyEncrypted []byte
+}
+
+func (d *db) getVault(id int, userId int) (vnk *vaultAndKey, err error) {
+	// Get vault by id
+	vault := &Vault{Id: id}
+	row := d.pool.QueryRow("SELECT name, owner_id FROM vaults where id=?", id)
+	err = row.Scan(&vault.Name, &vault.OwnerId)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// Get vault key
+	var keyString string
+	row = d.pool.QueryRow("SELECT vault_key_encrypted FROM vault_keys WHERE user_id=? AND vault_id=?", userId, id)
+	err = row.Scan(&keyString)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	key, err := base64.StdEncoding.DecodeString(keyString)
+	if err != nil {
+		log.Println("failed to decode vault key")
+		return nil, err
+	}
+
+	// Get all passwords in vault
+	rows, err := d.pool.Query(`SELECT id, name, description, password_encrypted, created_at, updated_at
+		FROM passwords WHERE vault_id=?`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		password := new(Password)
+		if err = rows.Scan(&password.Id, &password.Name, &password.Description, &password.passwordEncrypted,
+			&password.CreatedAt, &password.UpdatedAt); err != nil {
+			return nil, err
+		}
+		vault.Passwords = append(vault.Passwords, password)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return &vaultAndKey{vault: vault, keyEncrypted: key}, nil
+}
+
+// GetVaults retrieves all pairs of vaults and data keys the user with userId has access to.
+func (d *db) getVaults(userId int) (vnks []*vaultAndKey, err error) {
+	rows, err := d.pool.Query("SELECT vault_id FROM vault_keys WHERE user_id=?", userId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int
+		if err = rows.Scan(&id); err != nil {
+			return nil, err
+		}
+
+		vault, err := d.getVault(id, userId)
+		if err != nil {
+			return nil, err
+		}
+		vnks = append(vnks, vault)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return
 }

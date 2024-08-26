@@ -44,26 +44,29 @@ func CheckPermission(role Role, permission Permission) bool {
 }
 
 type User struct {
-	Id                  int
-	Username            string
-	Salt                []byte
-	PublicKey           []byte
-	PrivateKeyEncrypted []byte
-	Role                Role
+	Id       int    `json:"id"`
+	Username string `json:"username"`
+	Role     Role   `json:"role"`
+
+	salt                []byte
+	publicKey           []byte
+	privateKeyEncrypted []byte
 }
 
 type Vault struct {
-	Id        int
-	Name      string
-	OwnerId   int
-	Passwords []Password
+	Id        int    `json:"id"`
+	Name      string `json:"name"`
+	OwnerId   int    `json:"ownerId"`
+	Passwords []*Password
 }
 
 type Password struct {
-	Id                int
-	Name              string
-	Description       string
-	PasswordEncrypted []byte
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	Id          int       `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Password    string    `json:"password"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+
+	passwordEncrypted []byte
 }
