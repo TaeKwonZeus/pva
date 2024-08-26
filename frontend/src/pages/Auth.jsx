@@ -1,5 +1,18 @@
-import { Box, Button, Callout, Card, Checkbox, Flex, Heading, TextField } from "@radix-ui/themes";
-import { InfoCircledIcon, LockClosedIcon, PersonIcon } from "@radix-ui/react-icons";
+import {
+  Box,
+  Button,
+  Callout,
+  Card,
+  Checkbox,
+  Flex,
+  Heading,
+  TextField,
+} from "@radix-ui/themes";
+import {
+  InfoCircledIcon,
+  LockClosedIcon,
+  PersonIcon,
+} from "@radix-ui/react-icons";
 import { useState } from "react";
 import { logIn, register } from "../auth.js";
 import { useNavigate } from "react-router-dom";
@@ -46,7 +59,7 @@ function Auth() {
 
   return (
     <Flex align="center" direction="column" gap="3" justify="center" mt="9">
-      <Card style={{ width: "400px" }}>
+      <Card size="4" style={{ width: 400 }}>
         <Box mb="6">
           <Heading>Authorize</Heading>
         </Box>
@@ -58,6 +71,7 @@ function Auth() {
             <TextField.Root
               tabIndex="1"
               value={username}
+              autoComplete="username"
               onChange={(v) => setUsername(v.target.value)}
             >
               <TextField.Slot>
@@ -87,8 +101,17 @@ function Auth() {
             Remember
           </Flex>
           <Flex gap="2" align="center">
-            <Button onClick={tryLogIn} disabled={username === "" || password === ""}>Log In</Button>
-            <Button variant="surface" onClick={tryRegister} disabled={username === "" || password === ""}>
+            <Button
+              onClick={tryLogIn}
+              disabled={username === "" || password === ""}
+            >
+              Log In
+            </Button>
+            <Button
+              variant="surface"
+              onClick={tryRegister}
+              disabled={username === "" || password === ""}
+            >
               Register
             </Button>
           </Flex>

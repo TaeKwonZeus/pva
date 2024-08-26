@@ -8,7 +8,6 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
-	"errors"
 	"golang.org/x/crypto/argon2"
 )
 
@@ -33,12 +32,13 @@ func NewKeys() (*Keys, error) {
 		passwordKey: make([]byte, aesKeySize),
 	}
 
-	if _, err := rand.Read(keys.signingKey); err != nil {
-		return nil, err
-	}
-	if _, err := rand.Read(keys.passwordKey); err != nil {
-		return nil, err
-	}
+	// FIXME replace later
+	//if _, err := rand.Read(keys.signingKey); err != nil {
+	//	return nil, err
+	//}
+	//if _, err := rand.Read(keys.passwordKey); err != nil {
+	//	return nil, err
+	//}
 
 	return keys, nil
 }
@@ -58,15 +58,6 @@ func (k *Keys) Erase() {
 	for i := range k.passwordKey {
 		k.passwordKey[i] = 0
 	}
-}
-
-func IsErrConflict(err error) bool {
-	for _, e := range ConflictErrors {
-		if errors.Is(err, e) {
-			return true
-		}
-	}
-	return false
 }
 
 func newKeypair() (private []byte, public []byte, err error) {

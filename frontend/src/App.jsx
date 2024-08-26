@@ -27,7 +27,7 @@ function App() {
       icon: <HomeIcon />,
     },
     {
-      href: "#",
+      href: "/passwords",
       label: "Passwords",
       icon: <LockClosedIcon />,
     },
@@ -72,8 +72,16 @@ function App() {
       </Flex>
       <Flex>
         <Flex direction="column" gap="3" width="150px" mr="3">
-          {links.map(({ href, label, icon }) => (
-            <Link href={href} underline="hover" color="gray" highContrast>
+          {links.map(({ href, label, icon }, idx) => (
+            <Link
+              key={idx}
+              href={href}
+              underline="hover"
+              color="gray"
+              weight="bold"
+              highContrast
+              size="4"
+            >
               <Flex align="center" gap="1">
                 {icon}
                 {label}

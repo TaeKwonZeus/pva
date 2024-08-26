@@ -16,7 +16,20 @@ type db struct {
 	pool *sql.DB
 }
 
-var ConflictErrors = []error{sqlite3.ErrConstraintUnique, sqlite3.ErrConstraintPrimaryKey}
+var conflictErrors = []sqlite3.ErrNoExtended{sqlite3.ErrConstraintUnique, sqlite3.ErrConstraintPrimaryKey}
+
+func IsErrConflict(err error) bool {
+	var sqlite3Err sqlite3.Error
+	if !errors.As(err, &sqlite3Err) {
+		return false
+	}
+	for _, e := range conflictErrors {
+		if errors.Is(e, sqlite3Err.ExtendedCode) {
+			return true
+		}
+	}
+	return false
+}
 
 func (d *db) createUser(user *User) error {
 	res, err := d.pool.Exec(
