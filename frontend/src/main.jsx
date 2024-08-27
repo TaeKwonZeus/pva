@@ -24,7 +24,7 @@ const router = createBrowserRouter([
     children: [
       {
         element: <App />,
-        loader: authLoader,
+        // loader: authLoader,
         children: [
           { index: true, element: <Index /> },
           {

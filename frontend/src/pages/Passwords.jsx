@@ -1,48 +1,97 @@
 import {
+  Box,
   Button,
   Dialog,
   Flex,
   Heading,
   IconButton,
-  Table,
+  Separator,
   Text,
   TextField,
 } from "@radix-ui/themes";
 import {
   PlusIcon,
   ChevronDownIcon,
-  Pencil2Icon,
   TrashIcon,
   ChevronUpIcon,
+  Pencil1Icon,
+  LockClosedIcon,
+  ClipboardCopyIcon,
 } from "@radix-ui/react-icons";
 import { useState } from "react";
 
-function ExpandableRow({ children, expandComponent, ...otherProps }) {
+function Vault({ vault }) {
   const [isExpanded, setIsExpanded] = useState(false);
   return (
     <>
-      <Table.Row {...otherProps} align="center">
-        <Table.Cell>
-          <IconButton
-            variant="ghost"
-            onClick={() => setIsExpanded(!isExpanded)}
-          >
-            {isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
+      <Flex align="center" gap="4">
+        <IconButton variant="ghost" onClick={() => setIsExpanded(!isExpanded)}>
+          {isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
+        </IconButton>
+        <Box width="200px">{vault.name}</Box>
+        <Box width="200px">{vault.passwords.length}</Box>
+        <Flex gap="2">
+          <IconButton>
+            <PlusIcon />
           </IconButton>
-        </Table.Cell>
-        {children}
-      </Table.Row>
-      {isExpanded && (
-        <Table.Row>
-          <Table.Cell />
-          {expandComponent}
-        </Table.Row>
-      )}
+          <IconButton variant="soft">
+            <Pencil1Icon />
+          </IconButton>
+          <IconButton color="red">
+            <TrashIcon />
+          </IconButton>
+        </Flex>
+      </Flex>
+      <Separator size="4" />
+      {isExpanded &&
+        vault.passwords.map((p) => (
+          <>
+            <Flex align="center" gap="4">
+              <Flex width="15px" height="15px" align="center" justify="center">
+                <LockClosedIcon />
+              </Flex>
+              <Box width="200px">{p.name}</Box>
+              <Box width="250px">{p.description}</Box>
+              <Flex gap="2">
+                <IconButton variant="surface">
+                  <ClipboardCopyIcon />
+                </IconButton>
+                <IconButton variant="soft">
+                  <Pencil1Icon />
+                </IconButton>
+                <IconButton color="red">
+                  <TrashIcon />
+                </IconButton>
+              </Flex>
+            </Flex>
+            <Separator size="4" />
+          </>
+        ))}
     </>
   );
 }
 
 function Passwords() {
+  const vault = {
+    name: "Example vault",
+    passwords: [
+      {
+        name: "Example password",
+        description: "Example description",
+        password: "12345aboba",
+        createdAt: "2012-07-04T18:10:00.000+09:00",
+        updatedAt: "2012-07-04T18:10:00.000+09:00",
+      },
+      {
+        name: "Example password",
+        description: "Example description",
+        password: "12345aboba",
+        createdAt: "2012-07-04T18:10:00.000+09:00",
+        updatedAt: "2012-07-04T18:10:00.000+09:00",
+      },
+    ],
+  };
+
   return (
     <Flex direction="column" gap="3" width="800px">
       <Dialog.Root>
@@ -76,63 +125,24 @@ function Passwords() {
           </Flex>
         </Dialog.Content>
       </Dialog.Root>
+
       <Heading>My Vaults</Heading>
-      <Table.Root>
-        <Table.Header>
-          <Table.Row>
-            <Table.ColumnHeaderCell />
-            <Table.ColumnHeaderCell>Name</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>Password count</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>Actions</Table.ColumnHeaderCell>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
-          {Array(3).fill(
-            // <Table.Row key="1" align="center">
-            //   <Table.RowHeaderCell>
-            //     <IconButton variant="ghost">
-            //       <ChevronDownIcon />
-            //     </IconButton>
-            //   </Table.RowHeaderCell>
-            //   <Table.Cell>SOME PASSWORDS</Table.Cell>
-            //   <Table.Cell>ДОХУЯ</Table.Cell>
-            //   <Table.Cell>
-            //     <Flex gap="2">
-            //       <IconButton title="Add a new password">
-            //         <PlusIcon />
-            //       </IconButton>
-            //       <IconButton variant="soft" title="Edit this vault">
-            //         <Pencil2Icon />
-            //       </IconButton>
-            //       <IconButton color="red" title="Delete this vault">
-            //         <TrashIcon />
-            //       </IconButton>
-            //     </Flex>
-            //   </Table.Cell>
-            // </Table.Row>,
-            <ExpandableRow
-              key="1"
-              expandComponent={<div>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA</div>}
-            >
-              <Table.Cell>SOME PASSWORDS</Table.Cell>
-              <Table.Cell>ДОХУЯ</Table.Cell>
-              <Table.Cell>
-                <Flex gap="2">
-                  <IconButton title="Add a new password">
-                    <PlusIcon />
-                  </IconButton>
-                  <IconButton variant="soft" title="Edit this vault">
-                    <Pencil2Icon />
-                  </IconButton>
-                  <IconButton color="red" title="Delete this vault">
-                    <TrashIcon />
-                  </IconButton>
-                </Flex>
-              </Table.Cell>
-            </ExpandableRow>,
-          )}
-        </Table.Body>
-      </Table.Root>
+      <Flex direction="column" gap="3">
+        <Flex align="center" gap="4">
+          <Box width="15px" />
+          <Box width="200px">
+            <Text weight="bold">Name</Text>
+          </Box>
+          <Box width="200px">
+            <Text weight="bold">Password count</Text>
+          </Box>
+          <Box>
+            <Text weight="bold">Actions</Text>
+          </Box>
+        </Flex>
+        <Separator size="4"></Separator>
+        {Array(3).fill(<Vault vault={vault} />)}
+      </Flex>
     </Flex>
   );
 }
