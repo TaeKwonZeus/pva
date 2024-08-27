@@ -8,7 +8,39 @@ import {
   Text,
   TextField,
 } from "@radix-ui/themes";
-import { PlusIcon, ChevronDownIcon } from "@radix-ui/react-icons";
+import {
+  PlusIcon,
+  ChevronDownIcon,
+  Pencil2Icon,
+  TrashIcon,
+  ChevronUpIcon,
+} from "@radix-ui/react-icons";
+import { useState } from "react";
+
+function ExpandableRow({ children, expandComponent, ...otherProps }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  return (
+    <>
+      <Table.Row {...otherProps} align="center">
+        <Table.Cell>
+          <IconButton
+            variant="ghost"
+            onClick={() => setIsExpanded(!isExpanded)}
+          >
+            {isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
+          </IconButton>
+        </Table.Cell>
+        {children}
+      </Table.Row>
+      {isExpanded && (
+        <Table.Row>
+          <Table.Cell />
+          {expandComponent}
+        </Table.Row>
+      )}
+    </>
+  );
+}
 
 function Passwords() {
   return (
@@ -51,54 +83,54 @@ function Passwords() {
             <Table.ColumnHeaderCell />
             <Table.ColumnHeaderCell>Name</Table.ColumnHeaderCell>
             <Table.ColumnHeaderCell>Password count</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell />
+            <Table.ColumnHeaderCell>Actions</Table.ColumnHeaderCell>
           </Table.Row>
         </Table.Header>
         <Table.Body>
-          <Table.Row>
-            <Table.Cell>
-              <IconButton variant="soft">
-                <ChevronDownIcon />
-              </IconButton>
-            </Table.Cell>
-            <Table.RowHeaderCell>SOME PASSWORDS</Table.RowHeaderCell>
-            <Table.Cell>ДОХУЯ</Table.Cell>
-            <Table.Cell>
-              <IconButton>
-                <PlusIcon />
-              </IconButton>
-            </Table.Cell>
-          </Table.Row>
-
-          <Table.Row>
-            <Table.Cell>
-              <IconButton variant="soft">
-                <ChevronDownIcon />
-              </IconButton>
-            </Table.Cell>
-            <Table.RowHeaderCell>SOME PASSWORDS</Table.RowHeaderCell>
-            <Table.Cell>ДОХУЯ</Table.Cell>
-            <Table.Cell>
-              <IconButton>
-                <PlusIcon />
-              </IconButton>
-            </Table.Cell>
-          </Table.Row>
-
-          <Table.Row>
-            <Table.Cell>
-              <IconButton variant="soft">
-                <ChevronDownIcon />
-              </IconButton>
-            </Table.Cell>
-            <Table.RowHeaderCell>SOME PASSWORDS</Table.RowHeaderCell>
-            <Table.Cell>ДОХУЯ</Table.Cell>
-            <Table.Cell>
-              <IconButton>
-                <PlusIcon />
-              </IconButton>
-            </Table.Cell>
-          </Table.Row>
+          {Array(3).fill(
+            // <Table.Row key="1" align="center">
+            //   <Table.RowHeaderCell>
+            //     <IconButton variant="ghost">
+            //       <ChevronDownIcon />
+            //     </IconButton>
+            //   </Table.RowHeaderCell>
+            //   <Table.Cell>SOME PASSWORDS</Table.Cell>
+            //   <Table.Cell>ДОХУЯ</Table.Cell>
+            //   <Table.Cell>
+            //     <Flex gap="2">
+            //       <IconButton title="Add a new password">
+            //         <PlusIcon />
+            //       </IconButton>
+            //       <IconButton variant="soft" title="Edit this vault">
+            //         <Pencil2Icon />
+            //       </IconButton>
+            //       <IconButton color="red" title="Delete this vault">
+            //         <TrashIcon />
+            //       </IconButton>
+            //     </Flex>
+            //   </Table.Cell>
+            // </Table.Row>,
+            <ExpandableRow
+              key="1"
+              expandComponent={<div>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA</div>}
+            >
+              <Table.Cell>SOME PASSWORDS</Table.Cell>
+              <Table.Cell>ДОХУЯ</Table.Cell>
+              <Table.Cell>
+                <Flex gap="2">
+                  <IconButton title="Add a new password">
+                    <PlusIcon />
+                  </IconButton>
+                  <IconButton variant="soft" title="Edit this vault">
+                    <Pencil2Icon />
+                  </IconButton>
+                  <IconButton color="red" title="Delete this vault">
+                    <TrashIcon />
+                  </IconButton>
+                </Flex>
+              </Table.Cell>
+            </ExpandableRow>,
+          )}
         </Table.Body>
       </Table.Root>
     </Flex>
