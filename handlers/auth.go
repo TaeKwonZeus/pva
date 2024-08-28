@@ -114,7 +114,8 @@ func (e *Env) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	passwd, err := e.Store.EncryptPassword(c.Password)
 	if err != nil {
-		serverError(w, err)
+		log.Println("Server failure:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -138,7 +139,8 @@ func (e *Env) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Passwd: base64.StdEncoding.EncodeToString(passwd),
 	}).SignedString(e.Keys.SigningKey())
 	if err != nil {
-		serverError(w, err)
+		log.Println("Server failure:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -173,7 +175,8 @@ func (e *Env) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		serverError(w, err)
+		log.Println("Server failure:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 

@@ -114,7 +114,7 @@ func decryptVault(vnk *vaultAndKey, user *User, passwordKey []byte) (*Vault, err
 		return nil, err
 	}
 
-	vaultKey, err := rsaDecrypt(vnk.keyEncrypted, privateKey, nil)
+	vaultKey, err := rsaDecrypt(vnk.keyEncrypted, privateKey, []byte("vault"))
 	if err != nil {
 		return nil, err
 	}

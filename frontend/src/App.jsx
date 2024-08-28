@@ -48,7 +48,7 @@ function App() {
         <Box>
           <TextField.Root
             radius="full"
-            variant="soft"
+            variant="surface"
             style={{ width: 400 }}
             tabIndex={1}
             placeholder="Search"

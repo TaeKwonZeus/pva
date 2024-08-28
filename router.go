@@ -27,6 +27,8 @@ func newRouter(env *handlers.Env) http.Handler {
 		r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte("pong"))
 		})
+
+		r.Get("/vaults", env.GetVaultsHandler)
 		r.Post("/vaults/new", env.NewVaultHandler)
 	})
 

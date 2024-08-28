@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS passwords
 (
     id                 INTEGER PRIMARY KEY,
     name               TEXT                              NOT NULL,
-    description        TEXT,
+    description        TEXT                              NOT NULL,
     password_encrypted TEXT                              NOT NULL,
     created_at         NUMERIC DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at         NUMERIC DEFAULT CURRENT_TIMESTAMP NOT NULL,

@@ -54,10 +54,10 @@ type User struct {
 }
 
 type Vault struct {
-	Id        int    `json:"id"`
-	Name      string `json:"name"`
-	OwnerId   int    `json:"ownerId"`
-	Passwords []*Password
+	Id        int         `json:"id"`
+	Name      string      `json:"name"`
+	OwnerId   int         `json:"ownerId"`
+	Passwords []*Password `json:"passwords"`
 }
 
 type Password struct {

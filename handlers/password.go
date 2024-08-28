@@ -35,7 +35,8 @@ func (e *Env) NewVaultHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		serverError(w, err)
+		log.Println("Server failure:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -64,13 +65,15 @@ func (e *Env) GetVaultsHandler(w http.ResponseWriter, r *http.Request) {
 
 	vaults, err := e.Store.GetVaults(user, password)
 	if err != nil {
-		serverError(w, err)
+		log.Println("Server failure:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	err = json.NewEncoder(w).Encode(vaults)
 	if err != nil {
-		serverError(w, err)
+		log.Println("Server failure:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
