@@ -2,6 +2,7 @@ package data
 
 import (
 	"database/sql"
+	"time"
 )
 
 // Store abstracts away cryptographic operations on data from db.
@@ -62,54 +63,44 @@ func (s *Store) GetUserByUsername(username string) (*User, error) {
 	return s.db.getUserByUsername(username)
 }
 
-func (s *Store) CreateUser(user *User, password string) (id int, err error) {
+func (s *Store) CreateUser(user *User, password string) error {
 	privateKey, publicKey, err := newKeypair()
 	if err != nil {
-		return 0, err
+		return err
 	}
 
 	user.salt, err = generateSalt()
 	if err != nil {
-		return 0, err
+		return err
 	}
 
 	key := deriveKey(password, user.salt)
 	user.privateKeyEncrypted, err = aesEncrypt(privateKey, key, nil)
 	user.publicKey = publicKey
 	if err != nil {
-		return 0, err
+		return err
 	}
 
-	err = s.db.createUser(user)
-	if err != nil {
-		return 0, err
-	}
-
-	return user.Id, nil
+	return s.db.createUser(user)
 }
 
-func (s *Store) CreateVault(vault *Vault, owner *User) (id int, err error) {
+func (s *Store) CreateVault(vault *Vault, owner *User) error {
 	key, err := newAesKey()
 	if err != nil {
-		return 0, err
+		return err
 	}
 
 	vaultKeyEncrypted, err := rsaEncrypt(key, owner.publicKey, []byte("vault"))
 	if err != nil {
-		return 0, err
+		return err
 	}
 
 	vault.OwnerId = owner.Id
-	err = s.db.createVault(vault, vaultKeyEncrypted)
-	if err != nil {
-		return 0, err
-	}
-
-	return vault.Id, nil
+	return s.db.createVault(vault, vaultKeyEncrypted)
 }
 
-func decryptVault(vnk *vaultAndKey, user *User, passwordKey []byte) (*Vault, error) {
-	privateKey, err := aesDecrypt(user.privateKeyEncrypted, passwordKey, nil)
+func decryptVault(vnk *vaultAndKey, user *User, userKey []byte) (*Vault, error) {
+	privateKey, err := aesDecrypt(user.privateKeyEncrypted, userKey, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -131,17 +122,16 @@ func decryptVault(vnk *vaultAndKey, user *User, passwordKey []byte) (*Vault, err
 	return vnk.vault, nil
 }
 
-func (s *Store) GetVault(id int, user *User, password string) (*Vault, error) {
+func (s *Store) GetVault(id int, user *User, userKey []byte) (*Vault, error) {
 	vnk, err := s.db.getVault(id, user.Id)
 	if err != nil {
 		return nil, err
 	}
 
-	key := deriveKey(password, user.salt)
-	return decryptVault(vnk, user, key)
+	return decryptVault(vnk, user, userKey)
 }
 
-func (s *Store) GetVaults(user *User, password string) ([]*Vault, error) {
+func (s *Store) GetVaults(user *User, userKey []byte) ([]*Vault, error) {
 	vnks, err := s.db.getVaults(user.Id)
 	if err != nil {
 		return nil, err
@@ -149,13 +139,37 @@ func (s *Store) GetVaults(user *User, password string) ([]*Vault, error) {
 
 	out := make([]*Vault, len(vnks))
 
-	key := deriveKey(password, user.salt)
 	for i, vnk := range vnks {
-		out[i], err = decryptVault(vnk, user, key)
+		out[i], err = decryptVault(vnk, user, userKey)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	return out, nil
+}
+
+func (s *Store) CreatePassword(password *Password, vaultId int, user *User, userKey []byte) error {
+	password.CreatedAt = time.Now()
+	password.UpdatedAt = time.Now()
+
+	vnk, err := s.db.getVault(vaultId, user.Id)
+	if err != nil {
+		return err
+	}
+
+	privateKey, err := aesDecrypt(user.privateKeyEncrypted, userKey, nil)
+	if err != nil {
+		return err
+	}
+	vaultKey, err := rsaDecrypt(vnk.keyEncrypted, privateKey, []byte("vault"))
+	if err != nil {
+		return err
+	}
+	password.passwordEncrypted, err = aesEncrypt([]byte(password.Password), vaultKey, nil)
+	if err != nil {
+		return err
+	}
+
+	return s.db.createPassword(password, vaultId)
 }

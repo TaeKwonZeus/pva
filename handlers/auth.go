@@ -84,9 +84,10 @@ func (e *Env) AuthMiddleware(next http.Handler) http.Handler {
 			http.Error(w, "Failed to decrypt password", http.StatusUnauthorized)
 			return
 		}
+		userKey := user.DeriveKey(password)
 
 		ctx := context.WithValue(r.Context(), "user", user)
-		ctx = context.WithValue(ctx, "password", password)
+		ctx = context.WithValue(ctx, "userKey", userKey)
 		r = r.WithContext(ctx)
 
 		next.ServeHTTP(w, r)
@@ -166,7 +167,7 @@ func (e *Env) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = e.Store.CreateUser(&data.User{
+	err = e.Store.CreateUser(&data.User{
 		Username: c.Username,
 		Role:     data.RoleAdmin,
 	}, c.Password)

@@ -44,7 +44,7 @@ func CheckPermission(role Role, permission Permission) bool {
 }
 
 type User struct {
-	Id       int    `json:"id"`
+	Id       int    `json:"id,omitempty"`
 	Username string `json:"username"`
 	Role     Role   `json:"role"`
 
@@ -53,15 +53,19 @@ type User struct {
 	privateKeyEncrypted []byte
 }
 
+func (u *User) DeriveKey(password string) []byte {
+	return deriveKey(password, u.salt)
+}
+
 type Vault struct {
-	Id        int         `json:"id"`
+	Id        int         `json:"id,omitempty"`
 	Name      string      `json:"name"`
-	OwnerId   int         `json:"ownerId"`
+	OwnerId   int         `json:"ownerId,omitempty"`
 	Passwords []*Password `json:"passwords"`
 }
 
 type Password struct {
-	Id          int       `json:"id"`
+	Id          int       `json:"id,omitempty"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
 	Password    string    `json:"password"`

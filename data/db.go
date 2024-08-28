@@ -32,7 +32,7 @@ func IsErrConflict(err error) bool {
 }
 
 func (d *db) createUser(user *User) error {
-	res, err := d.pool.Exec(
+	_, err := d.pool.Exec(
 		`INSERT INTO users (username, role, salt, public_key, private_key_encrypted)
 		VALUES (?, ?, ?, ?, ?)`,
 		user.Username,
@@ -41,13 +41,7 @@ func (d *db) createUser(user *User) error {
 		base64.StdEncoding.EncodeToString(user.publicKey),
 		base64.StdEncoding.EncodeToString(user.privateKeyEncrypted),
 	)
-	if err != nil {
-		return err
-	}
-
-	id, _ := res.LastInsertId()
-	user.Id = int(id)
-	return nil
+	return err
 }
 
 func (d *db) getUser(id int) (user *User, err error) {
@@ -123,13 +117,11 @@ func (d *db) createVault(vault *Vault, vaultKeyEncrypted []byte) error {
 	}
 	defer tx.Rollback()
 
-	res, err := tx.Exec("INSERT INTO vaults (name, owner_id) VALUES (?, ?)",
+	_, err = tx.Exec("INSERT INTO vaults (name, owner_id) VALUES (?, ?)",
 		vault.Name, vault.OwnerId)
 	if err != nil {
 		return err
 	}
-	id, _ := res.LastInsertId()
-	vault.Id = int(id)
 
 	_, err = tx.Exec("INSERT INTO vault_keys (user_id, vault_id, vault_key_encrypted) VALUES (?, ?, ?)",
 		vault.OwnerId, vault.Id, base64.StdEncoding.EncodeToString(vaultKeyEncrypted))
@@ -226,4 +218,18 @@ func (d *db) getVaults(userId int) (vnks []*vaultAndKey, err error) {
 	}
 
 	return
+}
+
+func (d *db) createPassword(password *Password, vaultId int) error {
+	_, err := d.pool.Exec(
+		`INSERT INTO passwords (name, description, password_encrypted, created_at, updated_at, vault_id)
+		VALUES (?, ?, ?, ?, ?, ?)`,
+		password.Name,
+		password.Description,
+		password.passwordEncrypted,
+		password.CreatedAt,
+		password.UpdatedAt,
+		vaultId,
+	)
+	return err
 }
