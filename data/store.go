@@ -127,6 +127,9 @@ func (s *Store) GetVault(id int, user *User, userKey []byte) (*Vault, error) {
 	if err != nil {
 		return nil, err
 	}
+	if vnk == nil {
+		return nil, nil
+	}
 
 	return decryptVault(vnk, user, userKey)
 }

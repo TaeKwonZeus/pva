@@ -117,14 +117,16 @@ func (d *db) createVault(vault *Vault, vaultKeyEncrypted []byte) error {
 	}
 	defer tx.Rollback()
 
-	_, err = tx.Exec("INSERT INTO vaults (name, owner_id) VALUES (?, ?)",
+	res, err := tx.Exec("INSERT INTO vaults (name, owner_id) VALUES (?, ?)",
 		vault.Name, vault.OwnerId)
 	if err != nil {
 		return err
 	}
 
+	id, _ := res.LastInsertId()
+
 	_, err = tx.Exec("INSERT INTO vault_keys (user_id, vault_id, vault_key_encrypted) VALUES (?, ?, ?)",
-		vault.OwnerId, vault.Id, base64.StdEncoding.EncodeToString(vaultKeyEncrypted))
+		vault.OwnerId, id, base64.StdEncoding.EncodeToString(vaultKeyEncrypted))
 	if err != nil {
 		return err
 	}
@@ -211,7 +213,9 @@ func (d *db) getVaults(userId int) (vnks []*vaultAndKey, err error) {
 		if err != nil {
 			return nil, err
 		}
-		vnks = append(vnks, vault)
+		if vault != nil {
+			vnks = append(vnks, vault)
+		}
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err

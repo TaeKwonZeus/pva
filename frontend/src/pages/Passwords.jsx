@@ -7,6 +7,7 @@ import {
   IconButton,
   Separator,
   Text,
+  TextArea,
   TextField,
 } from "@radix-ui/themes";
 import {
@@ -17,6 +18,8 @@ import {
   Pencil1Icon,
   LockClosedIcon,
   ClipboardCopyIcon,
+  EyeOpenIcon,
+  EyeClosedIcon,
 } from "@radix-ui/react-icons";
 import { useEffect, useState } from "react";
 
@@ -76,6 +79,107 @@ function CreateVaultDialog() {
   );
 }
 
+function Password({ password, ...otherProps }) {
+  return (
+    <>
+      <Flex align="center" gap="4" {...otherProps}>
+        <Flex width="15px" height="15px" align="center" justify="center">
+          <LockClosedIcon />
+        </Flex>
+        <Box width="200px">{password.name}</Box>
+        <Box width="250px">{password.description}</Box>
+        <Flex gap="2">
+          <IconButton variant="surface">
+            <ClipboardCopyIcon />
+          </IconButton>
+          <IconButton variant="soft">
+            <Pencil1Icon />
+          </IconButton>
+          <IconButton color="red">
+            <TrashIcon />
+          </IconButton>
+        </Flex>
+      </Flex>
+      <Separator size="4" />
+    </>
+  );
+}
+
+function CreatePasswordDialog({ vaultId }) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [visible, setVisible] = useState(false);
+
+  async function createPassword() {
+    console.log(`${name} ${description} ${password} ${vaultId}`);
+  }
+
+  return (
+    <Dialog.Root>
+      <Dialog.Trigger>
+        <IconButton>
+          <PlusIcon />
+        </IconButton>
+      </Dialog.Trigger>
+      <Dialog.Content>
+        <Dialog.Title>New Password</Dialog.Title>
+        <Dialog.Description>Add a new password</Dialog.Description>
+        <Flex direction="column" gap="3">
+          <label>
+            <Text as="div" size="2" mb="1" weight="bold">
+              Name
+            </Text>
+            <TextField.Root
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Password name goes here"
+            />
+          </label>
+          <label>
+            <Text as="div" size="2" mb="1" weight="bold">
+              Name
+            </Text>
+            <TextArea
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Description goes here"
+            />
+          </label>
+          <label>
+            <Text as="div" size="2" mb="1" weight="bold">
+              Name
+            </Text>
+            <TextField.Root
+              type={visible ? "text" : "password"}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password goes here"
+            >
+              <TextField.Slot>
+                <IconButton
+                  variant="ghost"
+                  onClick={() => setVisible(!visible)}
+                >
+                  {visible ? <EyeOpenIcon /> : <EyeClosedIcon />}
+                </IconButton>
+              </TextField.Slot>
+            </TextField.Root>
+          </label>
+        </Flex>
+        <Flex gap="3" mt="4" justify="end">
+          <Dialog.Close>
+            <Button variant="soft" color="gray">
+              Cancel
+            </Button>
+          </Dialog.Close>
+          <Dialog.Close>
+            <Button onClick={createPassword}>Create</Button>
+          </Dialog.Close>
+        </Flex>
+      </Dialog.Content>
+    </Dialog.Root>
+  );
+}
+
 function Vault({ vault, ...otherProps }) {
   const [isExpanded, setIsExpanded] = useState(false);
   return (
@@ -87,9 +191,7 @@ function Vault({ vault, ...otherProps }) {
         <Box width="200px">{vault.name}</Box>
         <Box width="200px">{(vault?.passwords ?? []).length}</Box>
         <Flex gap="2">
-          <IconButton>
-            <PlusIcon />
-          </IconButton>
+          <CreatePasswordDialog vaultId={vault.id} />
           <IconButton variant="soft">
             <Pencil1Icon />
           </IconButton>
@@ -100,28 +202,8 @@ function Vault({ vault, ...otherProps }) {
       </Flex>
       <Separator size="4" />
       {isExpanded &&
-        (vault?.passwords ?? []).map((p) => (
-          <>
-            <Flex align="center" gap="4">
-              <Flex width="15px" height="15px" align="center" justify="center">
-                <LockClosedIcon />
-              </Flex>
-              <Box width="200px">{p.name}</Box>
-              <Box width="250px">{p.description}</Box>
-              <Flex gap="2">
-                <IconButton variant="surface">
-                  <ClipboardCopyIcon />
-                </IconButton>
-                <IconButton variant="soft">
-                  <Pencil1Icon />
-                </IconButton>
-                <IconButton color="red">
-                  <TrashIcon />
-                </IconButton>
-              </Flex>
-            </Flex>
-            <Separator size="4" />
-          </>
+        (vault?.passwords ?? []).map((p, index) => (
+          <Password password={p} vaultId={vault.id} key={index} />
         ))}
     </>
   );
