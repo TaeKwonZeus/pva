@@ -30,6 +30,7 @@ func newRouter(env *handlers.Env) http.Handler {
 
 		r.Get("/vaults", env.GetVaultsHandler)
 		r.Post("/vaults/new", env.NewVaultHandler)
+		r.Post("/vaults/{id}/new", env.NewPasswordHandler)
 	})
 
 	r.Route("/", func(r chi.Router) {

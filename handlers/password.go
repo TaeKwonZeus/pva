@@ -3,8 +3,10 @@ package handlers
 import (
 	"encoding/json"
 	"github.com/TaeKwonZeus/pva/data"
+	"github.com/go-chi/chi/v5"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 func (e *Env) NewVaultHandler(w http.ResponseWriter, r *http.Request) {
@@ -79,11 +81,16 @@ func (e *Env) GetVaultsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (e *Env) NewPasswordHandler(w http.ResponseWriter, r *http.Request) {
+	vaultId, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "Invalid vault id", http.StatusBadRequest)
+		return
+	}
+
 	var body struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
 		Password    string `json:"password"`
-		VaultId     int    `json:"vaultId"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -109,11 +116,11 @@ func (e *Env) NewPasswordHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := e.Store.CreatePassword(&data.Password{
+	err = e.Store.CreatePassword(&data.Password{
 		Name:        body.Name,
 		Description: body.Description,
 		Password:    body.Password,
-	}, body.VaultId, user, userKey)
+	}, vaultId, user, userKey)
 	if data.IsErrConflict(err) {
 		http.Error(w, "Password already exists in the same vault", http.StatusConflict)
 		return

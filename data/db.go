@@ -7,6 +7,7 @@ import (
 	"errors"
 	"github.com/mattn/go-sqlite3"
 	"log"
+	"time"
 )
 
 //go:embed startup.sql
@@ -182,10 +183,18 @@ func (d *db) getVault(id int, userId int) (vnk *vaultAndKey, err error) {
 
 	for rows.Next() {
 		password := new(Password)
+
+		var createdAtTimestamp int64
+		var updatedAtTimestamp int64
+
 		if err = rows.Scan(&password.Id, &password.Name, &password.Description, &password.passwordEncrypted,
-			&password.CreatedAt, &password.UpdatedAt); err != nil {
+			&createdAtTimestamp, &updatedAtTimestamp); err != nil {
 			return nil, err
 		}
+
+		password.CreatedAt = time.Unix(createdAtTimestamp, 0)
+		password.UpdatedAt = time.Unix(updatedAtTimestamp, 0)
+
 		vault.Passwords = append(vault.Passwords, password)
 	}
 	if err = rows.Err(); err != nil {
@@ -231,8 +240,8 @@ func (d *db) createPassword(password *Password, vaultId int) error {
 		password.Name,
 		password.Description,
 		password.passwordEncrypted,
-		password.CreatedAt,
-		password.UpdatedAt,
+		password.CreatedAt.Unix(),
+		password.UpdatedAt.Unix(),
 		vaultId,
 	)
 	return err

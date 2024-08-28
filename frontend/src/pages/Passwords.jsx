@@ -83,19 +83,25 @@ function Password({ password, ...otherProps }) {
   return (
     <>
       <Flex align="center" gap="4" {...otherProps}>
-        <Flex width="15px" height="15px" align="center" justify="center">
+        <Flex width="15px" height="15px" align="center" justify="center" ml="5">
           <LockClosedIcon />
         </Flex>
         <Box width="200px">{password.name}</Box>
-        <Box width="250px">{password.description}</Box>
+        <Box width="200px">{password.description}</Box>
         <Flex gap="2">
-          <IconButton variant="surface">
+          <IconButton
+            variant="surface"
+            onClick={async () =>
+              await navigator.clipboard.writeText(password.password)
+            }
+            title="Copy to clipboard"
+          >
             <ClipboardCopyIcon />
           </IconButton>
-          <IconButton variant="soft">
+          <IconButton variant="soft" title="Edit this password">
             <Pencil1Icon />
           </IconButton>
-          <IconButton color="red">
+          <IconButton color="red" title="Delete this password">
             <TrashIcon />
           </IconButton>
         </Flex>
@@ -113,13 +119,28 @@ function CreatePasswordDialog({ vaultId }) {
   const [visible, setVisible] = useState(false);
 
   async function createPassword() {
-    console.log(`${name} ${description} ${password} ${vaultId}`);
+    const res = await fetch(`/api/vaults/${vaultId}/new`, {
+      method: "POST",
+      body: JSON.stringify({
+        name,
+        description,
+        password,
+      }),
+    });
+    if (!res.ok) {
+      if (res.status === 409)
+        alert("Password with this name already exists in this vault!");
+      else alert(`Server error: ${res.status} ${await res.text()}`);
+      return;
+    }
+
+    window.location.reload();
   }
 
   return (
     <Dialog.Root>
       <Dialog.Trigger>
-        <IconButton>
+        <IconButton title="Add a new password">
           <PlusIcon />
         </IconButton>
       </Dialog.Trigger>
@@ -147,7 +168,7 @@ function CreatePasswordDialog({ vaultId }) {
           </label>
           <label>
             <Text as="div" size="2" mb="1" weight="bold">
-              Name
+              Password
             </Text>
             <TextField.Root
               type={visible ? "text" : "password"}
@@ -192,10 +213,10 @@ function Vault({ vault, ...otherProps }) {
         <Box width="200px">{(vault?.passwords ?? []).length}</Box>
         <Flex gap="2">
           <CreatePasswordDialog vaultId={vault.id} />
-          <IconButton variant="soft">
+          <IconButton variant="soft" title="Edit this vault">
             <Pencil1Icon />
           </IconButton>
-          <IconButton color="red">
+          <IconButton color="red" title="Delete this vault">
             <TrashIcon />
           </IconButton>
         </Flex>
