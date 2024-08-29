@@ -32,7 +32,7 @@ function CreateVaultDialog() {
     const res = await fetch("/api/vaults/new", {
       method: "POST",
       body: JSON.stringify({
-        name,
+        name: name.trim(),
       }),
     });
     setName("");
@@ -73,7 +73,9 @@ function CreateVaultDialog() {
             </Button>
           </Dialog.Close>
           <Dialog.Close>
-            <Button onClick={createVault}>Create</Button>
+            <Button onClick={createVault} disabled={name.trim() === ""}>
+              Create
+            </Button>
           </Dialog.Close>
         </Flex>
       </Dialog.Content>
@@ -81,9 +83,106 @@ function CreateVaultDialog() {
   );
 }
 
-function Password({ password, vaultId, ...otherProps }) {
+function EditPasswordDialog({ vaultId, passwordId }) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [visible, setVisible] = useState(false);
+
+  async function editPassword() {
+    let body = {};
+    if (name.trim() === "") {
+      body.name = name.trim();
+    }
+    if (description.trim() === "") {
+      body.description = description.trim();
+    }
+    if (password.trim() === "") {
+      body.password = password.trim();
+    }
+
+    const res = await fetch(`/api/vaults/${vaultId}/${passwordId}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      console.error(res.statusText + " " + (await res.text()));
+      return;
+    }
+    window.location.reload();
+  }
+
+  return (
+    <Dialog.Root>
+      <Dialog.Trigger>
+        <IconButton title="Edit this password" variant="soft">
+          <Pencil1Icon />
+        </IconButton>
+      </Dialog.Trigger>
+      <Dialog.Content>
+        <Dialog.Title>Edit this password</Dialog.Title>
+        <Dialog.Description>
+          Edit this password. Omitted fields will not be changed.
+        </Dialog.Description>
+        <Flex direction="column" gap="3">
+          <label>
+            <Text as="div" size="2" mb="1" weight="bold">
+              Name
+            </Text>
+            <TextField.Root
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Password name goes here"
+            />
+          </label>
+          <label>
+            <Text as="div" size="2" mb="1" weight="bold">
+              Name
+            </Text>
+            <TextArea
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Description goes here"
+            />
+          </label>
+          <label>
+            <Text as="div" size="2" mb="1" weight="bold">
+              Password
+            </Text>
+            <TextField.Root
+              type={visible ? "text" : "password"}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password goes here"
+            >
+              <TextField.Slot>
+                <IconButton
+                  variant="ghost"
+                  onClick={() => setVisible(!visible)}
+                >
+                  {visible ? <EyeOpenIcon /> : <EyeClosedIcon />}
+                </IconButton>
+              </TextField.Slot>
+            </TextField.Root>
+          </label>
+        </Flex>
+        <Flex gap="3" mt="4" justify="end">
+          <Dialog.Close>
+            <Button variant="soft" color="gray">
+              Cancel
+            </Button>
+          </Dialog.Close>
+          <Dialog.Close>
+            <Button onClick={editPassword}>Create</Button>
+          </Dialog.Close>
+        </Flex>
+      </Dialog.Content>
+    </Dialog.Root>
+  );
+}
+
+function DeletePasswordDialog({ vaultId, passwordId }) {
   async function deletePassword() {
-    const res = await fetch(`/api/vaults/${vaultId}/${password.id}`, {
+    const res = await fetch(`/api/vaults/${vaultId}/${passwordId}`, {
       method: "DELETE",
     });
 
@@ -96,6 +195,37 @@ function Password({ password, vaultId, ...otherProps }) {
   }
 
   return (
+    <AlertDialog.Root>
+      <AlertDialog.Trigger>
+        <IconButton color="red" title="Delete this password">
+          <TrashIcon />
+        </IconButton>
+      </AlertDialog.Trigger>
+      <AlertDialog.Content maxWidth="450px">
+        <AlertDialog.Title>Delete this vault</AlertDialog.Title>
+        <AlertDialog.Description size="2">
+          Are you sure? This password will no longer be accessible by anyone
+          with access to it.
+        </AlertDialog.Description>
+        <Flex gap="3" mt="4" justify="end">
+          <AlertDialog.Cancel>
+            <Button variant="soft" color="gray">
+              Cancel
+            </Button>
+          </AlertDialog.Cancel>
+          <AlertDialog.Action>
+            <Button color="red" onClick={deletePassword}>
+              Delete this password
+            </Button>
+          </AlertDialog.Action>
+        </Flex>
+      </AlertDialog.Content>
+    </AlertDialog.Root>
+  );
+}
+
+function Password({ password, vaultId, ...otherProps }) {
+  return (
     <>
       <Flex align="center" gap="4" {...otherProps}>
         <Flex width="15px" height="15px" align="center" justify="center" ml="5">
@@ -106,44 +236,15 @@ function Password({ password, vaultId, ...otherProps }) {
         <Flex gap="2">
           <IconButton
             variant="surface"
-            onClick={async () =>
-              await navigator.clipboard.writeText(password.password)
-            }
+            onClick={() => navigator.clipboard.writeText(password.password)}
             title="Copy to clipboard"
           >
             <ClipboardCopyIcon />
           </IconButton>
 
-          <IconButton variant="soft" title="Edit this password">
-            <Pencil1Icon />
-          </IconButton>
+          <EditPasswordDialog vaultId={vaultId} passwordId={password.id} />
 
-          <AlertDialog.Root>
-            <AlertDialog.Trigger>
-              <IconButton color="red" title="Delete this password">
-                <TrashIcon />
-              </IconButton>
-            </AlertDialog.Trigger>
-            <AlertDialog.Content maxWidth="450px">
-              <AlertDialog.Title>Delete this vault</AlertDialog.Title>
-              <AlertDialog.Description size="2">
-                Are you sure? This password will no longer be accessible by
-                anyone with access to it.
-              </AlertDialog.Description>
-              <Flex gap="3" mt="4" justify="end">
-                <AlertDialog.Cancel>
-                  <Button variant="soft" color="gray">
-                    Cancel
-                  </Button>
-                </AlertDialog.Cancel>
-                <AlertDialog.Action>
-                  <Button color="red" onClick={deletePassword}>
-                    Delete this password
-                  </Button>
-                </AlertDialog.Action>
-              </Flex>
-            </AlertDialog.Content>
-          </AlertDialog.Root>
+          <DeletePasswordDialog vaultId={vaultId} passwordId={password.id} />
         </Flex>
       </Flex>
       <Separator size="4" />
@@ -162,9 +263,9 @@ function CreatePasswordDialog({ vaultId }) {
     const res = await fetch(`/api/vaults/${vaultId}/new`, {
       method: "POST",
       body: JSON.stringify({
-        name,
-        description,
-        password,
+        name: name.trim(),
+        description: description.trim(),
+        password: password.trim(),
       }),
     });
     if (!res.ok) {
@@ -233,7 +334,12 @@ function CreatePasswordDialog({ vaultId }) {
             </Button>
           </Dialog.Close>
           <Dialog.Close>
-            <Button onClick={createPassword}>Create</Button>
+            <Button
+              onClick={createPassword}
+              disabled={name.trim() === "" || password.trim() === ""}
+            >
+              Create
+            </Button>
           </Dialog.Close>
         </Flex>
       </Dialog.Content>
@@ -241,11 +347,9 @@ function CreatePasswordDialog({ vaultId }) {
   );
 }
 
-function Vault({ vault, ...otherProps }) {
-  const [isExpanded, setIsExpanded] = useState(false);
-
+function DeleteVaultDialog({ vaultId }) {
   async function deleteVault() {
-    const res = await fetch(`/api/vaults/${vault.id}`, {
+    const res = await fetch(`/api/vaults/${vaultId}`, {
       method: "DELETE",
     });
 
@@ -256,6 +360,39 @@ function Vault({ vault, ...otherProps }) {
 
     window.location.reload();
   }
+
+  return (
+    <AlertDialog.Root>
+      <AlertDialog.Trigger>
+        <IconButton color="red" title="Delete this vault">
+          <TrashIcon />
+        </IconButton>
+      </AlertDialog.Trigger>
+      <AlertDialog.Content maxWidth="450px">
+        <AlertDialog.Title>Delete this vault</AlertDialog.Title>
+        <AlertDialog.Description size="2">
+          Are you sure? This vault and ALL passwords belonging to it will no
+          longer be accessible by anyone with access to them.
+        </AlertDialog.Description>
+        <Flex gap="3" mt="4" justify="end">
+          <AlertDialog.Cancel>
+            <Button variant="soft" color="gray">
+              Cancel
+            </Button>
+          </AlertDialog.Cancel>
+          <AlertDialog.Action>
+            <Button color="red" onClick={deleteVault}>
+              Delete this vault
+            </Button>
+          </AlertDialog.Action>
+        </Flex>
+      </AlertDialog.Content>
+    </AlertDialog.Root>
+  );
+}
+
+function Vault({ vault, ...otherProps }) {
+  const [isExpanded, setIsExpanded] = useState(false);
 
   return (
     <>
@@ -275,32 +412,7 @@ function Vault({ vault, ...otherProps }) {
             <Pencil1Icon />
           </IconButton>
 
-          <AlertDialog.Root>
-            <AlertDialog.Trigger>
-              <IconButton color="red" title="Delete this vault">
-                <TrashIcon />
-              </IconButton>
-            </AlertDialog.Trigger>
-            <AlertDialog.Content maxWidth="450px">
-              <AlertDialog.Title>Delete this vault</AlertDialog.Title>
-              <AlertDialog.Description size="2">
-                Are you sure? This vault and ALL passwords belonging to it will
-                no longer be accessible by anyone with access to them.
-              </AlertDialog.Description>
-              <Flex gap="3" mt="4" justify="end">
-                <AlertDialog.Cancel>
-                  <Button variant="soft" color="gray">
-                    Cancel
-                  </Button>
-                </AlertDialog.Cancel>
-                <AlertDialog.Action>
-                  <Button color="red" onClick={deleteVault}>
-                    Delete this vault
-                  </Button>
-                </AlertDialog.Action>
-              </Flex>
-            </AlertDialog.Content>
-          </AlertDialog.Root>
+          <DeleteVaultDialog vaultId={vault.id} />
         </Flex>
       </Flex>
       <Separator size="4" />
