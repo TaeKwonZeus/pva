@@ -152,6 +152,20 @@ func (s *Store) GetVaults(user *User, userKey []byte) ([]*Vault, error) {
 	return out, nil
 }
 
+func (s *Store) CheckVaultOwnership(vaultId int, user *User, userKey []byte) bool {
+	vnk, err := s.db.getVault(vaultId, user.Id)
+	if err != nil || vnk == nil {
+		return false
+	}
+
+	_, err = decryptVault(vnk, user, userKey)
+	return err == nil
+}
+
+func (s *Store) DeleteVault(id int) error {
+	return s.db.deleteVault(id)
+}
+
 func (s *Store) CreatePassword(password *Password, vaultId int, user *User, userKey []byte) error {
 	password.CreatedAt = time.Now()
 	password.UpdatedAt = time.Now()
@@ -175,4 +189,8 @@ func (s *Store) CreatePassword(password *Password, vaultId int, user *User, user
 	}
 
 	return s.db.createPassword(password, vaultId)
+}
+
+func (s *Store) DeletePassword(id int) error {
+	return s.db.deletePassword(id)
 }

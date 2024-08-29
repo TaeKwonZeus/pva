@@ -9,6 +9,7 @@ import {
   Text,
   TextArea,
   TextField,
+  AlertDialog,
 } from "@radix-ui/themes";
 import {
   PlusIcon,
@@ -20,6 +21,7 @@ import {
   ClipboardCopyIcon,
   EyeOpenIcon,
   EyeClosedIcon,
+  Share1Icon,
 } from "@radix-ui/react-icons";
 import { useEffect, useState } from "react";
 
@@ -79,7 +81,20 @@ function CreateVaultDialog() {
   );
 }
 
-function Password({ password, ...otherProps }) {
+function Password({ password, vaultId, ...otherProps }) {
+  async function deletePassword() {
+    const res = await fetch(`/api/vaults/${vaultId}/${password.id}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) {
+      alert(`Server error: ${res.status} ${await res.text()}`);
+      return;
+    }
+
+    window.location.reload();
+  }
+
   return (
     <>
       <Flex align="center" gap="4" {...otherProps}>
@@ -98,12 +113,37 @@ function Password({ password, ...otherProps }) {
           >
             <ClipboardCopyIcon />
           </IconButton>
+
           <IconButton variant="soft" title="Edit this password">
             <Pencil1Icon />
           </IconButton>
-          <IconButton color="red" title="Delete this password">
-            <TrashIcon />
-          </IconButton>
+
+          <AlertDialog.Root>
+            <AlertDialog.Trigger>
+              <IconButton color="red" title="Delete this password">
+                <TrashIcon />
+              </IconButton>
+            </AlertDialog.Trigger>
+            <AlertDialog.Content maxWidth="450px">
+              <AlertDialog.Title>Delete this vault</AlertDialog.Title>
+              <AlertDialog.Description size="2">
+                Are you sure? This password will no longer be accessible by
+                anyone with access to it.
+              </AlertDialog.Description>
+              <Flex gap="3" mt="4" justify="end">
+                <AlertDialog.Cancel>
+                  <Button variant="soft" color="gray">
+                    Cancel
+                  </Button>
+                </AlertDialog.Cancel>
+                <AlertDialog.Action>
+                  <Button color="red" onClick={deletePassword}>
+                    Delete this password
+                  </Button>
+                </AlertDialog.Action>
+              </Flex>
+            </AlertDialog.Content>
+          </AlertDialog.Root>
         </Flex>
       </Flex>
       <Separator size="4" />
@@ -203,6 +243,20 @@ function CreatePasswordDialog({ vaultId }) {
 
 function Vault({ vault, ...otherProps }) {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  async function deleteVault() {
+    const res = await fetch(`/api/vaults/${vault.id}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) {
+      alert(`Server error: ${res.status} ${await res.text()}`);
+      return;
+    }
+
+    window.location.reload();
+  }
+
   return (
     <>
       <Flex align="center" gap="4" {...otherProps}>
@@ -213,12 +267,40 @@ function Vault({ vault, ...otherProps }) {
         <Box width="200px">{(vault?.passwords ?? []).length}</Box>
         <Flex gap="2">
           <CreatePasswordDialog vaultId={vault.id} />
+          <IconButton variant="surface" title="Share this vault">
+            <Share1Icon />
+          </IconButton>
+
           <IconButton variant="soft" title="Edit this vault">
             <Pencil1Icon />
           </IconButton>
-          <IconButton color="red" title="Delete this vault">
-            <TrashIcon />
-          </IconButton>
+
+          <AlertDialog.Root>
+            <AlertDialog.Trigger>
+              <IconButton color="red" title="Delete this vault">
+                <TrashIcon />
+              </IconButton>
+            </AlertDialog.Trigger>
+            <AlertDialog.Content maxWidth="450px">
+              <AlertDialog.Title>Delete this vault</AlertDialog.Title>
+              <AlertDialog.Description size="2">
+                Are you sure? This vault and ALL passwords belonging to it will
+                no longer be accessible by anyone with access to them.
+              </AlertDialog.Description>
+              <Flex gap="3" mt="4" justify="end">
+                <AlertDialog.Cancel>
+                  <Button variant="soft" color="gray">
+                    Cancel
+                  </Button>
+                </AlertDialog.Cancel>
+                <AlertDialog.Action>
+                  <Button color="red" onClick={deleteVault}>
+                    Delete this vault
+                  </Button>
+                </AlertDialog.Action>
+              </Flex>
+            </AlertDialog.Content>
+          </AlertDialog.Root>
         </Flex>
       </Flex>
       <Separator size="4" />

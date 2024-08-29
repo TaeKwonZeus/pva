@@ -28,9 +28,14 @@ func newRouter(env *handlers.Env) http.Handler {
 			_, _ = w.Write([]byte("pong"))
 		})
 
-		r.Get("/vaults", env.GetVaultsHandler)
-		r.Post("/vaults/new", env.NewVaultHandler)
-		r.Post("/vaults/{id}/new", env.NewPasswordHandler)
+		r.Route("/vaults", func(r chi.Router) {
+			r.Get("/", env.GetVaultsHandler)
+			r.Post("/new", env.NewVaultHandler)
+			r.Delete("/{id}", env.DeleteVaultHandler)
+
+			r.Post("/{id}/new", env.NewPasswordHandler)
+			r.Delete("/{vaultId}/{passwordId}", env.DeletePasswordHandler)
+		})
 	})
 
 	r.Route("/", func(r chi.Router) {

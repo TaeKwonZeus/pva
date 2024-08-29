@@ -49,7 +49,7 @@ document.body.style.margin = "0";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <Theme>
+    <Theme appearance="dark">
       <RouterProvider router={router} />
     </Theme>
   </StrictMode>,

@@ -233,6 +233,11 @@ func (d *db) getVaults(userId int) (vnks []*vaultAndKey, err error) {
 	return
 }
 
+func (d *db) deleteVault(id int) error {
+	_, err := d.pool.Exec("DELETE FROM vaults WHERE id=?", id)
+	return err
+}
+
 func (d *db) createPassword(password *Password, vaultId int) error {
 	_, err := d.pool.Exec(
 		`INSERT INTO passwords (name, description, password_encrypted, created_at, updated_at, vault_id)
@@ -244,5 +249,10 @@ func (d *db) createPassword(password *Password, vaultId int) error {
 		password.UpdatedAt.Unix(),
 		vaultId,
 	)
+	return err
+}
+
+func (d *db) deletePassword(id int) error {
+	_, err := d.pool.Exec("DELETE FROM passwords WHERE id=?", id)
 	return err
 }

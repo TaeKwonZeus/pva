@@ -80,6 +80,43 @@ func (e *Env) GetVaultsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (e *Env) DeleteVaultHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "Invalid vault id", http.StatusBadRequest)
+		return
+	}
+
+	user, ok := r.Context().Value("user").(*data.User)
+	if !ok {
+		log.Println("could not get user")
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	userKey, ok := r.Context().Value("userKey").([]byte)
+	if !ok {
+		log.Println("could not get user key")
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	if !data.CheckPermission(user.Role, data.PermissionManagePasswords) ||
+		!e.Store.CheckVaultOwnership(id, user, userKey) {
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		return
+	}
+
+	err = e.Store.DeleteVault(id)
+	if err != nil {
+		log.Println("Server failure:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (e *Env) NewPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	vaultId, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
@@ -111,7 +148,8 @@ func (e *Env) NewPasswordHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !data.CheckPermission(user.Role, data.PermissionManagePasswords) {
+	if !data.CheckPermission(user.Role, data.PermissionManagePasswords) ||
+		!e.Store.CheckVaultOwnership(vaultId, user, userKey) {
 		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 		return
 	}
@@ -132,4 +170,46 @@ func (e *Env) NewPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
+}
+
+func (e *Env) DeletePasswordHandler(w http.ResponseWriter, r *http.Request) {
+	vaultId, err := strconv.Atoi(chi.URLParam(r, "vaultId"))
+	if err != nil {
+		http.Error(w, "Invalid vault id", http.StatusBadRequest)
+		return
+	}
+	passwordId, err := strconv.Atoi(chi.URLParam(r, "passwordId"))
+	if err != nil {
+		http.Error(w, "Invalid password id", http.StatusBadRequest)
+		return
+	}
+
+	user, ok := r.Context().Value("user").(*data.User)
+	if !ok {
+		log.Println("could not get user")
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	userKey, ok := r.Context().Value("userKey").([]byte)
+	if !ok {
+		log.Println("could not get user key")
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	if !data.CheckPermission(user.Role, data.PermissionManagePasswords) ||
+		!e.Store.CheckVaultOwnership(vaultId, user, userKey) {
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		return
+	}
+
+	err = e.Store.DeletePassword(passwordId)
+	if err != nil {
+		log.Println("Server failure:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
