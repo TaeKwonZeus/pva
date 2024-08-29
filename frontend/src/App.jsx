@@ -22,7 +22,7 @@ function App() {
 
   const links = [
     {
-      href: "#",
+      href: "/",
       label: "Home",
       icon: <HomeIcon />,
     },
@@ -32,7 +32,7 @@ function App() {
       icon: <LockClosedIcon />,
     },
     {
-      href: "#",
+      href: "/",
       label: "Documents",
       icon: <FileIcon />,
     },
@@ -41,10 +41,12 @@ function App() {
   return (
     <Container mx="3">
       <Flex align="center" justify="between" height="48px" mb="3">
-        <Flex align="center" justify="center" gap="1">
-          <SketchLogoIcon width="24px" height="24px" />
-          <Heading>PVA</Heading>
-        </Flex>
+        <Link href="/" color="gray" highContrast underline="none">
+          <Flex align="center" justify="center" gap="1">
+            <SketchLogoIcon width="24px" height="24px" />
+            <Heading>PVA</Heading>
+          </Flex>
+        </Link>
         <Box>
           <TextField.Root
             radius="full"

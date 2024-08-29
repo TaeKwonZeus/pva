@@ -58,7 +58,7 @@ function Auth() {
   }
 
   return (
-    <Flex align="center" direction="column" gap="3" justify="center" mt="9">
+    <Flex align="center" direction="column" gap="3" justify="center" pt="9">
       <Card size="4" style={{ width: 400 }}>
         <Box mb="6">
           <Heading>Authorize</Heading>
