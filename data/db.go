@@ -132,11 +132,7 @@ func (d *db) createVault(vault *Vault, vaultKeyEncrypted []byte) error {
 		return err
 	}
 
-	if err = tx.Commit(); err != nil {
-		return err
-	}
-
-	return nil
+	return tx.Commit()
 }
 
 type vaultAndKey struct {
@@ -144,7 +140,27 @@ type vaultAndKey struct {
 	keyEncrypted []byte
 }
 
-func (d *db) getVault(id int, userId int) (vnk *vaultAndKey, err error) {
+func (d *db) getVaultKey(id, userId int) (key []byte, err error) {
+	var keyString string
+	row := d.pool.QueryRow("SELECT vault_key_encrypted FROM vault_keys WHERE user_id=? AND vault_id=?", userId, id)
+	err = row.Scan(&keyString)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	key, err = base64.StdEncoding.DecodeString(keyString)
+	if err != nil {
+		log.Println("failed to decode vault key")
+		return nil, err
+	}
+
+	return
+}
+
+func (d *db) getVault(id, userId int) (vnk *vaultAndKey, err error) {
 	// Get vault by id
 	vault := &Vault{Id: id}
 	row := d.pool.QueryRow("SELECT name, owner_id FROM vaults where id=?", id)
@@ -157,20 +173,12 @@ func (d *db) getVault(id int, userId int) (vnk *vaultAndKey, err error) {
 	}
 
 	// Get vault key
-	var keyString string
-	row = d.pool.QueryRow("SELECT vault_key_encrypted FROM vault_keys WHERE user_id=? AND vault_id=?", userId, id)
-	err = row.Scan(&keyString)
-	if errors.Is(err, sql.ErrNoRows) {
+	key, err := d.getVaultKey(vault.Id, userId)
+	if err != nil {
+		return nil, err
+	}
+	if key == nil {
 		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	key, err := base64.StdEncoding.DecodeString(keyString)
-	if err != nil {
-		log.Println("failed to decode vault key")
-		return nil, err
 	}
 
 	// Get all passwords in vault
@@ -233,6 +241,17 @@ func (d *db) getVaults(userId int) (vnks []*vaultAndKey, err error) {
 	return
 }
 
+func (d *db) updateVault(vault *Vault) error {
+	if vault.Name != "" {
+		_, err := d.pool.Exec("UPDATE vaults SET name=? WHERE id=?", vault.Name, vault.Id)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (d *db) deleteVault(id int) error {
 	_, err := d.pool.Exec("DELETE FROM vaults WHERE id=?", id)
 	return err
@@ -250,6 +269,46 @@ func (d *db) createPassword(password *Password, vaultId int) error {
 		vaultId,
 	)
 	return err
+}
+
+func (d *db) updatePassword(password *Password) error {
+	tx, err := d.pool.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var updated bool
+
+	if password.Name != "" {
+		updated = true
+		_, err = tx.Exec("UPDATE passwords SET name=? WHERE id=?", password.Name, password.Id)
+		if err != nil {
+			return err
+		}
+	}
+	if password.Description != "" {
+		updated = true
+		_, err = tx.Exec("UPDATE passwords SET description=? WHERE id=?", password.Description, password.Id)
+		if err != nil {
+			return err
+		}
+	}
+	if password.passwordEncrypted != nil {
+		updated = true
+		_, err = tx.Exec("UPDATE passwords SET password_encrypted=? WHERE id=?", password.passwordEncrypted, password.Id)
+		if err != nil {
+			return err
+		}
+	}
+	if updated {
+		_, err = tx.Exec("UPDATE passwords SET updated_at=? WHERE id=?", password.UpdatedAt.Unix(), password.Id)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func (d *db) deletePassword(id int) error {

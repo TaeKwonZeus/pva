@@ -10,9 +10,7 @@ import (
 )
 
 func (e *Env) NewVaultHandler(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Name string `json:"name"`
-	}
+	var body data.Vault
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -29,9 +27,7 @@ func (e *Env) NewVaultHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := e.Store.CreateVault(&data.Vault{
-		Name: body.Name,
-	}, user)
+	err := e.Store.CreateVault(&body, user)
 	if data.IsErrConflict(err) {
 		http.Error(w, "Vault already exists", http.StatusConflict)
 		return
@@ -80,6 +76,54 @@ func (e *Env) GetVaultsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (e *Env) UpdateVaultHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "Invalid vault id", http.StatusBadRequest)
+		return
+	}
+
+	var body data.Vault
+	if err = json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	body.Id = id
+
+	user, ok := r.Context().Value("user").(*data.User)
+	if !ok {
+		log.Println("could not get user")
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	userKey, ok := r.Context().Value("userKey").([]byte)
+	if !ok {
+		log.Println("could not get user key")
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	if !data.CheckPermission(user.Role, data.PermissionManagePasswords) ||
+		!e.Store.CheckVaultOwnership(id, user, userKey) {
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		return
+	}
+
+	err = e.Store.UpdateVault(&body)
+	if data.IsErrConflict(err) {
+		http.Error(w, "Vault already exists", http.StatusConflict)
+		return
+	}
+	if err != nil {
+		log.Println("Server failure:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (e *Env) DeleteVaultHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
@@ -124,11 +168,7 @@ func (e *Env) NewPasswordHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var body struct {
-		Name        string `json:"name"`
-		Description string `json:"description"`
-		Password    string `json:"password"`
-	}
+	var body data.Password
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -154,11 +194,7 @@ func (e *Env) NewPasswordHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = e.Store.CreatePassword(&data.Password{
-		Name:        body.Name,
-		Description: body.Description,
-		Password:    body.Password,
-	}, vaultId, user, userKey)
+	err = e.Store.CreatePassword(&body, vaultId, user, userKey)
 	if data.IsErrConflict(err) {
 		http.Error(w, "Password already exists in the same vault", http.StatusConflict)
 		return
@@ -170,6 +206,59 @@ func (e *Env) NewPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
+}
+
+func (e *Env) UpdatePasswordHandler(w http.ResponseWriter, r *http.Request) {
+	vaultId, err := strconv.Atoi(chi.URLParam(r, "vaultId"))
+	if err != nil {
+		http.Error(w, "Invalid vault id", http.StatusBadRequest)
+		return
+	}
+	passwordId, err := strconv.Atoi(chi.URLParam(r, "passwordId"))
+	if err != nil {
+		http.Error(w, "Invalid password id", http.StatusBadRequest)
+		return
+	}
+
+	var body data.Password
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	body.Id = passwordId
+
+	user, ok := r.Context().Value("user").(*data.User)
+	if !ok {
+		log.Println("could not get user")
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	userKey, ok := r.Context().Value("userKey").([]byte)
+	if !ok {
+		log.Println("could not get user key")
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	if !data.CheckPermission(user.Role, data.PermissionManagePasswords) ||
+		!e.Store.CheckVaultOwnership(vaultId, user, userKey) {
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		return
+	}
+
+	err = e.Store.UpdatePassword(&body, vaultId, user, userKey)
+	if data.IsErrConflict(err) {
+		http.Error(w, "Password already exists in the same vault", http.StatusConflict)
+		return
+	}
+	if err != nil {
+		log.Println("Server failure:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (e *Env) DeletePasswordHandler(w http.ResponseWriter, r *http.Request) {

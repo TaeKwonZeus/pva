@@ -91,20 +91,13 @@ function EditPasswordDialog({ vaultId, passwordId }) {
   const [visible, setVisible] = useState(false);
 
   async function editPassword() {
-    let body = {};
-    if (name.trim() === "") {
-      body.name = name.trim();
-    }
-    if (description.trim() === "") {
-      body.description = description.trim();
-    }
-    if (password.trim() === "") {
-      body.password = password.trim();
-    }
-
     const res = await fetch(`/api/vaults/${vaultId}/${passwordId}`, {
       method: "PUT",
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        name,
+        description,
+        password,
+      }),
     });
 
     if (!res.ok) {
@@ -132,7 +125,7 @@ function EditPasswordDialog({ vaultId, passwordId }) {
               Name
             </Text>
             <TextField.Root
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => setName(e.target.value.trim())}
               placeholder="Password name goes here"
             />
           </label>
@@ -141,7 +134,7 @@ function EditPasswordDialog({ vaultId, passwordId }) {
               Name
             </Text>
             <TextArea
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => setDescription(e.target.value.trim())}
               placeholder="Description goes here"
             />
           </label>
@@ -151,7 +144,7 @@ function EditPasswordDialog({ vaultId, passwordId }) {
             </Text>
             <TextField.Root
               type={visible ? "text" : "password"}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value.trim())}
               placeholder="Password goes here"
             >
               <TextField.Slot>
@@ -172,7 +165,12 @@ function EditPasswordDialog({ vaultId, passwordId }) {
             </Button>
           </Dialog.Close>
           <Dialog.Close>
-            <Button onClick={editPassword}>Create</Button>
+            <Button
+              onClick={editPassword}
+              disabled={name === "" && description === "" && password === ""}
+            >
+              Edit this password
+            </Button>
           </Dialog.Close>
         </Flex>
       </Dialog.Content>
@@ -187,7 +185,7 @@ function DeletePasswordDialog({ vaultId, passwordId }) {
     });
 
     if (!res.ok) {
-      alert(`Server error: ${res.status} ${await res.text()}`);
+      console.error(res.statusText + " " + (await res.text()));
       return;
     }
 
@@ -270,8 +268,8 @@ function CreatePasswordDialog({ vaultId }) {
     });
     if (!res.ok) {
       if (res.status === 409)
-        alert("Password with this name already exists in this vault!");
-      else alert(`Server error: ${res.status} ${await res.text()}`);
+        console.error("Password with this name already exists in this vault!");
+      else console.error(res.statusText + " " + (await res.text()));
       return;
     }
 
@@ -347,6 +345,64 @@ function CreatePasswordDialog({ vaultId }) {
   );
 }
 
+function EditVaultDialog({ vaultId }) {
+  const [name, setName] = useState("");
+
+  async function editVault() {
+    const res = await fetch(`/api/vaults/${vaultId}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        name,
+      }),
+    });
+    setName("");
+    if (!res.ok) {
+      console.error(res.statusText + " " + (await res.text()));
+      return;
+    }
+    window.location.reload();
+  }
+
+  return (
+    <Dialog.Root>
+      <Dialog.Trigger>
+        <IconButton variant="soft" title="Edit this vault">
+          <Pencil1Icon />
+        </IconButton>
+      </Dialog.Trigger>
+      <Dialog.Content>
+        <Dialog.Title>Edit this vault</Dialog.Title>
+        <Dialog.Description>
+          Edit this vault. Omitted fields will not be updated.
+        </Dialog.Description>
+        <Flex direction="column" gap="3">
+          <label>
+            <Text as="div" size="2" mb="1" weight="bold">
+              Name
+            </Text>
+            <TextField.Root
+              onChange={(e) => setName(e.target.value.trim())}
+              placeholder="Vault name goes here"
+            />
+          </label>
+        </Flex>
+        <Flex gap="3" mt="4" justify="end">
+          <Dialog.Close>
+            <Button variant="soft" color="gray">
+              Cancel
+            </Button>
+          </Dialog.Close>
+          <Dialog.Close>
+            <Button onClick={editVault} disabled={name.trim() === ""}>
+              Edit this vault
+            </Button>
+          </Dialog.Close>
+        </Flex>
+      </Dialog.Content>
+    </Dialog.Root>
+  );
+}
+
 function DeleteVaultDialog({ vaultId }) {
   async function deleteVault() {
     const res = await fetch(`/api/vaults/${vaultId}`, {
@@ -354,7 +410,7 @@ function DeleteVaultDialog({ vaultId }) {
     });
 
     if (!res.ok) {
-      alert(`Server error: ${res.status} ${await res.text()}`);
+      console.error(res.statusText + " " + (await res.text()));
       return;
     }
 
@@ -408,9 +464,7 @@ function Vault({ vault, ...otherProps }) {
             <Share1Icon />
           </IconButton>
 
-          <IconButton variant="soft" title="Edit this vault">
-            <Pencil1Icon />
-          </IconButton>
+          <EditVaultDialog vaultId={vault.id} />
 
           <DeleteVaultDialog vaultId={vault.id} />
         </Flex>

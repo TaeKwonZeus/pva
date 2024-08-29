@@ -2,6 +2,7 @@ package data
 
 import (
 	"database/sql"
+	"errors"
 	"time"
 )
 
@@ -153,13 +154,20 @@ func (s *Store) GetVaults(user *User, userKey []byte) ([]*Vault, error) {
 }
 
 func (s *Store) CheckVaultOwnership(vaultId int, user *User, userKey []byte) bool {
-	vnk, err := s.db.getVault(vaultId, user.Id)
-	if err != nil || vnk == nil {
+	keyEncrypted, err := s.db.getVaultKey(vaultId, user.Id)
+	if err != nil || keyEncrypted == nil {
 		return false
 	}
-
-	_, err = decryptVault(vnk, user, userKey)
+	privateKey, err := aesDecrypt(user.privateKeyEncrypted, userKey, nil)
+	if err != nil {
+		return false
+	}
+	_, err = rsaDecrypt(keyEncrypted, privateKey, []byte("vault"))
 	return err == nil
+}
+
+func (s *Store) UpdateVault(vault *Vault) error {
+	return s.db.updateVault(vault)
 }
 
 func (s *Store) DeleteVault(id int) error {
@@ -189,6 +197,36 @@ func (s *Store) CreatePassword(password *Password, vaultId int, user *User, user
 	}
 
 	return s.db.createPassword(password, vaultId)
+}
+
+func (s *Store) UpdatePassword(password *Password, vaultId int, user *User, userKey []byte) error {
+	password.UpdatedAt = time.Now()
+
+	// If password isn't being updated we can skip any cryptographic operations altogether
+	if password.Password == "" {
+		return s.db.updatePassword(password)
+	}
+
+	keyEncrypted, err := s.db.getVaultKey(vaultId, user.Id)
+	if err != nil {
+		return err
+	}
+	if keyEncrypted == nil {
+		return errors.New("failed to find vault key")
+	}
+
+	privateKey, err := aesDecrypt(user.privateKeyEncrypted, userKey, nil)
+	if err != nil {
+		return err
+	}
+	key, err := rsaDecrypt(keyEncrypted, privateKey, []byte("vault"))
+
+	password.passwordEncrypted, err = aesEncrypt([]byte(password.Password), key, nil)
+	if err != nil {
+		return err
+	}
+
+	return s.db.updatePassword(password)
 }
 
 func (s *Store) DeletePassword(id int) error {
