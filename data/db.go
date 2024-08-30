@@ -33,7 +33,7 @@ func IsErrConflict(err error) bool {
 }
 
 func (d *db) createUser(user *User) error {
-	_, err := d.pool.Exec(
+	res, err := d.pool.Exec(
 		`INSERT INTO users (username, role, salt, public_key, private_key_encrypted)
 		VALUES (?, ?, ?, ?, ?)`,
 		user.Username,
@@ -42,7 +42,12 @@ func (d *db) createUser(user *User) error {
 		base64.StdEncoding.EncodeToString(user.publicKey),
 		base64.StdEncoding.EncodeToString(user.privateKeyEncrypted),
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	id, _ := res.LastInsertId()
+	user.Id = int(id)
+	return nil
 }
 
 func (d *db) getUser(id int) (user *User, err error) {
@@ -111,6 +116,49 @@ func (d *db) getUserByUsername(username string) (user *User, err error) {
 	return
 }
 
+func (d *db) getAdmins() (users []*User, err error) {
+	rows, err := d.pool.Query(`SELECT id, username, salt, public_key, private_key_encrypted FROM users
+        WHERE role=?`, RoleAdmin)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		user := User{Role: RoleAdmin}
+
+		var salt string
+		var publicKey string
+		var privateKeyEncrypted string
+
+		if err = rows.Scan(&user.Id, &user.Username, &salt, &publicKey, &privateKeyEncrypted); err != nil {
+			return nil, err
+		}
+
+		user.salt, err = base64.StdEncoding.DecodeString(salt)
+		if err != nil {
+			log.Println("failed to decode salt")
+			return nil, err
+		}
+		user.publicKey, err = base64.StdEncoding.DecodeString(publicKey)
+		if err != nil {
+			log.Println("failed to decode public key")
+			return nil, err
+		}
+		user.privateKeyEncrypted, err = base64.StdEncoding.DecodeString(privateKeyEncrypted)
+		if err != nil {
+			log.Println("failed to decode private key")
+			return nil, err
+		}
+
+		users = append(users, &user)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return
+}
+
 func (d *db) createVault(vault *Vault, vaultKeyEncrypted []byte) error {
 	tx, err := d.pool.Begin()
 	if err != nil {
@@ -125,11 +173,41 @@ func (d *db) createVault(vault *Vault, vaultKeyEncrypted []byte) error {
 	}
 
 	id, _ := res.LastInsertId()
+	vault.Id = int(id)
 
 	_, err = tx.Exec("INSERT INTO vault_keys (user_id, vault_id, vault_key_encrypted) VALUES (?, ?, ?)",
 		vault.OwnerId, id, base64.StdEncoding.EncodeToString(vaultKeyEncrypted))
 	if err != nil {
 		return err
+	}
+
+	return tx.Commit()
+}
+
+type vaultKey struct {
+	userId       int
+	vaultId      int
+	keyEncrypted []byte
+}
+
+func (d *db) createVaultKeys(keys []*vaultKey) error {
+	tx, err := d.pool.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare(`INSERT INTO vault_keys (user_id, vault_id, vault_key_encrypted) VALUES (?, ?, ?)ON CONFLICT DO NOTHING`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, key := range keys {
+		_, err = stmt.Exec(key.userId, key.vaultId, base64.StdEncoding.EncodeToString(key.keyEncrypted))
+		if err != nil {
+			return err
+		}
 	}
 
 	return tx.Commit()
@@ -258,7 +336,7 @@ func (d *db) deleteVault(id int) error {
 }
 
 func (d *db) createPassword(password *Password, vaultId int) error {
-	_, err := d.pool.Exec(
+	res, err := d.pool.Exec(
 		`INSERT INTO passwords (name, description, password_encrypted, created_at, updated_at, vault_id)
 		VALUES (?, ?, ?, ?, ?, ?)`,
 		password.Name,
@@ -268,7 +346,12 @@ func (d *db) createPassword(password *Password, vaultId int) error {
 		password.UpdatedAt.Unix(),
 		vaultId,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	id, _ := res.LastInsertId()
+	password.Id = int(id)
+	return nil
 }
 
 func (d *db) updatePassword(password *Password) error {

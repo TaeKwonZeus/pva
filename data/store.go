@@ -97,7 +97,25 @@ func (s *Store) CreateVault(vault *Vault, owner *User) error {
 	}
 
 	vault.OwnerId = owner.Id
-	return s.db.createVault(vault, vaultKeyEncrypted)
+	if err = s.db.createVault(vault, vaultKeyEncrypted); err != nil {
+		return err
+	}
+
+	// Add a key for all admins
+	admins, err := s.db.getAdmins()
+	if err != nil {
+		return err
+	}
+
+	var vaultKeys []*vaultKey
+	for _, admin := range admins {
+		vaultKeyEncrypted, err = rsaEncrypt(key, admin.publicKey, []byte("vault"))
+		if err != nil {
+			return err
+		}
+		vaultKeys = append(vaultKeys, &vaultKey{userId: admin.Id, vaultId: vault.Id, keyEncrypted: vaultKeyEncrypted})
+	}
+	return s.db.createVaultKeys(vaultKeys)
 }
 
 func decryptVault(vnk *vaultAndKey, user *User, userKey []byte) (*Vault, error) {
