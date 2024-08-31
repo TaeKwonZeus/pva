@@ -32,12 +32,12 @@ function CreateVaultDialog() {
     const res = await fetch("/api/vaults/new", {
       method: "POST",
       body: JSON.stringify({
-        name: name.trim(),
+        name,
       }),
     });
-    setName("");
+
     if (!res.ok) {
-      console.error(res.statusText + " " + (await res.text()));
+      alert(res.statusText + " " + (await res.text()));
       return;
     }
     window.location.reload();
@@ -61,7 +61,7 @@ function CreateVaultDialog() {
               Name
             </Text>
             <TextField.Root
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => setName(e.target.value.trim())}
               placeholder="Vault name goes here"
             />
           </label>
@@ -73,8 +73,8 @@ function CreateVaultDialog() {
             </Button>
           </Dialog.Close>
           <Dialog.Close>
-            <Button onClick={createVault} disabled={name.trim() === ""}>
-              Create
+            <Button onClick={createVault} disabled={name === ""}>
+              Create vault
             </Button>
           </Dialog.Close>
         </Flex>
@@ -92,7 +92,7 @@ function EditPasswordDialog({ vaultId, passwordId }) {
 
   async function editPassword() {
     const res = await fetch(`/api/vaults/${vaultId}/${passwordId}`, {
-      method: "PUT",
+      method: "PATCH",
       body: JSON.stringify({
         name,
         description,
@@ -101,7 +101,7 @@ function EditPasswordDialog({ vaultId, passwordId }) {
     });
 
     if (!res.ok) {
-      console.error(res.statusText + " " + (await res.text()));
+      alert(res.statusText + " " + (await res.text()));
       return;
     }
     window.location.reload();
@@ -185,7 +185,7 @@ function DeletePasswordDialog({ vaultId, passwordId }) {
     });
 
     if (!res.ok) {
-      console.error(res.statusText + " " + (await res.text()));
+      alert(res.statusText + " " + (await res.text()));
       return;
     }
 
@@ -261,15 +261,15 @@ function CreatePasswordDialog({ vaultId }) {
     const res = await fetch(`/api/vaults/${vaultId}/new`, {
       method: "POST",
       body: JSON.stringify({
-        name: name.trim(),
-        description: description.trim(),
-        password: password.trim(),
+        name,
+        description,
+        password,
       }),
     });
     if (!res.ok) {
       if (res.status === 409)
-        console.error("Password with this name already exists in this vault!");
-      else console.error(res.statusText + " " + (await res.text()));
+        alert("Password with this name already exists in this vault!");
+      else alert(res.statusText + " " + (await res.text()));
       return;
     }
 
@@ -292,7 +292,7 @@ function CreatePasswordDialog({ vaultId }) {
               Name
             </Text>
             <TextField.Root
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => setName(e.target.value.trim())}
               placeholder="Password name goes here"
             />
           </label>
@@ -301,7 +301,7 @@ function CreatePasswordDialog({ vaultId }) {
               Name
             </Text>
             <TextArea
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => setDescription(e.target.value.trim())}
               placeholder="Description goes here"
             />
           </label>
@@ -311,7 +311,7 @@ function CreatePasswordDialog({ vaultId }) {
             </Text>
             <TextField.Root
               type={visible ? "text" : "password"}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value.trim())}
               placeholder="Password goes here"
             >
               <TextField.Slot>
@@ -334,9 +334,9 @@ function CreatePasswordDialog({ vaultId }) {
           <Dialog.Close>
             <Button
               onClick={createPassword}
-              disabled={name.trim() === "" || password.trim() === ""}
+              disabled={name === "" || description === "" || password === ""}
             >
-              Create
+              Create password
             </Button>
           </Dialog.Close>
         </Flex>
@@ -350,14 +350,14 @@ function EditVaultDialog({ vaultId }) {
 
   async function editVault() {
     const res = await fetch(`/api/vaults/${vaultId}`, {
-      method: "PUT",
+      method: "PATCH",
       body: JSON.stringify({
         name,
       }),
     });
     setName("");
     if (!res.ok) {
-      console.error(res.statusText + " " + (await res.text()));
+      alert(res.statusText + " " + (await res.text()));
       return;
     }
     window.location.reload();
@@ -393,7 +393,7 @@ function EditVaultDialog({ vaultId }) {
             </Button>
           </Dialog.Close>
           <Dialog.Close>
-            <Button onClick={editVault} disabled={name.trim() === ""}>
+            <Button onClick={editVault} disabled={name === ""}>
               Edit this vault
             </Button>
           </Dialog.Close>
@@ -410,7 +410,7 @@ function DeleteVaultDialog({ vaultId }) {
     });
 
     if (!res.ok) {
-      console.error(res.statusText + " " + (await res.text()));
+      alert(res.statusText + " " + (await res.text()));
       return;
     }
 
@@ -447,6 +447,65 @@ function DeleteVaultDialog({ vaultId }) {
   );
 }
 
+function ShareVaultDialog({ vaultId }) {
+  const [name, setName] = useState("");
+
+  async function shareVault() {
+    const res = await fetch(
+      `/api/vaults/${vaultId}/share?target=${encodeURI(name)}`,
+      {
+        method: "POST",
+      },
+    );
+
+    if (!res.ok) {
+      alert(res.statusText + " " + (await res.text()));
+      return;
+    }
+
+    alert("Vault shared successfully!");
+  }
+
+  return (
+    <Dialog.Root>
+      <Dialog.Trigger>
+        <IconButton title="Share this vault" variant="surface">
+          <Share1Icon />
+        </IconButton>
+      </Dialog.Trigger>
+      <Dialog.Content>
+        <Dialog.Title>Share this vault</Dialog.Title>
+        <Dialog.Description>
+          Share this vault with another user.
+        </Dialog.Description>
+        <Flex direction="column" gap="3">
+          <label>
+            <Text as="div" size="2" mb="1" weight="bold">
+              Username
+            </Text>
+            <TextField.Root
+              onChange={(e) => setName(e.target.value.trim())}
+              placeholder="Username goes here"
+            />
+          </label>
+        </Flex>
+        <Flex gap="3" mt="4" justify="end">
+          <Dialog.Close>
+            <Button variant="soft" color="gray">
+              Cancel
+            </Button>
+          </Dialog.Close>
+          <Dialog.Close>
+            <Button onClick={shareVault} disabled={name === ""}>
+              Share this vault
+            </Button>
+          </Dialog.Close>
+        </Flex>
+      </Dialog.Content>
+    </Dialog.Root>
+  );
+}
+
 function Vault({ vault, ...otherProps }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -460,12 +519,8 @@ function Vault({ vault, ...otherProps }) {
         <Box width="200px">{(vault?.passwords ?? []).length}</Box>
         <Flex gap="2">
           <CreatePasswordDialog vaultId={vault.id} />
-          <IconButton variant="surface" title="Share this vault">
-            <Share1Icon />
-          </IconButton>
-
+          <ShareVaultDialog vaultId={vault.id} />
           <EditVaultDialog vaultId={vault.id} />
-
           <DeleteVaultDialog vaultId={vault.id} />
         </Flex>
       </Flex>
@@ -485,7 +540,7 @@ function Passwords() {
     fetch("/api/vaults")
       .then((r) => r.json())
       .then((v) => setVaults(v))
-      .catch(console.error);
+      .catch(alert);
   }, []);
 
   return (

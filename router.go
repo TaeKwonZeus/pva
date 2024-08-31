@@ -31,11 +31,13 @@ func newRouter(env *handlers.Env) http.Handler {
 		r.Route("/vaults", func(r chi.Router) {
 			r.Get("/", env.GetVaultsHandler)
 			r.Post("/new", env.NewVaultHandler)
-			r.Put("/{id}", env.UpdateVaultHandler)
+			r.Patch("/{id}", env.UpdateVaultHandler)
 			r.Delete("/{id}", env.DeleteVaultHandler)
+			r.Patch("/{id}", env.ShareVaultHandler)
+			r.Post("/{id}/share", env.ShareVaultHandler)
 
 			r.Post("/{id}/new", env.NewPasswordHandler)
-			r.Put("/{vaultId}/{passwordId}", env.UpdatePasswordHandler)
+			r.Patch("/{vaultId}/{passwordId}", env.UpdatePasswordHandler)
 			r.Delete("/{vaultId}/{passwordId}", env.DeletePasswordHandler)
 		})
 	})

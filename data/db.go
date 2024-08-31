@@ -17,19 +17,20 @@ type db struct {
 	pool *sql.DB
 }
 
-var conflictErrors = []sqlite3.ErrNoExtended{sqlite3.ErrConstraintUnique, sqlite3.ErrConstraintPrimaryKey}
-
 func IsErrConflict(err error) bool {
 	var sqlite3Err sqlite3.Error
-	if !errors.As(err, &sqlite3Err) {
-		return false
-	}
-	for _, e := range conflictErrors {
-		if errors.Is(e, sqlite3Err.ExtendedCode) {
-			return true
-		}
-	}
-	return false
+	return errors.As(err, &sqlite3Err) && (errors.Is(sqlite3Err.ExtendedCode, sqlite3.ErrConstraintUnique) ||
+		errors.Is(sqlite3Err.ExtendedCode, sqlite3.ErrConstraintPrimaryKey))
+}
+
+func IsErrNotFound(err error) bool {
+	return errors.Is(err, sql.ErrNoRows)
+}
+
+func (d *db) getUserCount() (n int, err error) {
+	row := d.pool.QueryRow("SELECT COUNT(*) FROM users")
+	err = row.Scan(&n)
+	return
 }
 
 func (d *db) createUser(user *User) error {
@@ -60,9 +61,6 @@ func (d *db) getUser(id int) (user *User, err error) {
 	row := d.pool.QueryRow(`SELECT username, role, salt, public_key, private_key_encrypted
 		FROM users WHERE id=?`, id)
 	err = row.Scan(&user.Username, &user.Role, &salt, &publicKey, &privateKeyEncrypted)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil
-	}
 	if err != nil {
 		return nil, err
 	}
@@ -96,8 +94,8 @@ func (d *db) getUserByUsername(username string) (user *User, err error) {
 	row := d.pool.QueryRow(`SELECT id, role, salt, public_key, private_key_encrypted
 		FROM users WHERE username=?`, username)
 	err = row.Scan(&user.Id, &user.Role, &salt, &publicKey, &privateKeyEncrypted)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil
+	if err != nil {
+		return nil, err
 	}
 
 	user.salt, err = base64.StdEncoding.DecodeString(salt)
@@ -200,7 +198,7 @@ func (d *db) createVaultKeys(keys ...*vaultKey) error {
 	}
 	defer tx.Rollback()
 
-	stmt, err := tx.Prepare(`INSERT INTO vault_keys (user_id, vault_id, vault_key_encrypted) VALUES (?, ?, ?)ON CONFLICT DO NOTHING`)
+	stmt, err := tx.Prepare(`INSERT INTO vault_keys (user_id, vault_id, vault_key_encrypted) VALUES (?, ?, ?) ON CONFLICT DO NOTHING`)
 	if err != nil {
 		return err
 	}
@@ -225,9 +223,6 @@ func (d *db) getVaultKey(id, userId int) (key []byte, err error) {
 	var keyString string
 	row := d.pool.QueryRow("SELECT vault_key_encrypted FROM vault_keys WHERE user_id=? AND vault_id=?", userId, id)
 	err = row.Scan(&keyString)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil
-	}
 	if err != nil {
 		return nil, err
 	}
@@ -246,9 +241,6 @@ func (d *db) getVault(id, userId int) (vnk *vaultAndKey, err error) {
 	vault := &Vault{Id: id}
 	row := d.pool.QueryRow("SELECT name, owner_id FROM vaults where id=?", id)
 	err = row.Scan(&vault.Name, &vault.OwnerId)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil
-	}
 	if err != nil {
 		return nil, err
 	}
@@ -257,9 +249,6 @@ func (d *db) getVault(id, userId int) (vnk *vaultAndKey, err error) {
 	key, err := d.getVaultKey(vault.Id, userId)
 	if err != nil {
 		return nil, err
-	}
-	if key == nil {
-		return nil, nil
 	}
 
 	// Get all passwords in vault

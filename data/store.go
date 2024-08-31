@@ -2,7 +2,6 @@ package data
 
 import (
 	"database/sql"
-	"errors"
 	"time"
 )
 
@@ -44,9 +43,6 @@ func (s *Store) VerifyPassword(username string, password string) (verified bool,
 	if err != nil {
 		return false, nil
 	}
-	if user == nil {
-		return false, nil
-	}
 
 	key := deriveKey(password, user.salt)
 	if _, err := aesDecrypt(user.privateKeyEncrypted, key); err != nil {
@@ -54,6 +50,10 @@ func (s *Store) VerifyPassword(username string, password string) (verified bool,
 	}
 
 	return true, user
+}
+
+func (s *Store) GetUserCount() (n int, err error) {
+	return s.db.getUserCount()
 }
 
 func (s *Store) GetUser(id int) (*User, error) {
@@ -146,9 +146,6 @@ func (s *Store) GetVault(id int, user *User, userKey []byte) (*Vault, error) {
 	if err != nil {
 		return nil, err
 	}
-	if vnk == nil {
-		return nil, nil
-	}
 
 	return decryptVault(vnk, user, userKey)
 }
@@ -173,7 +170,7 @@ func (s *Store) GetVaults(user *User, userKey []byte) ([]*Vault, error) {
 
 func (s *Store) CheckVaultOwnership(vaultId int, user *User, userKey []byte) bool {
 	keyEncrypted, err := s.db.getVaultKey(vaultId, user.Id)
-	if err != nil || keyEncrypted == nil {
+	if err != nil {
 		return false
 	}
 	privateKey, err := aesDecrypt(user.privateKeyEncrypted, userKey)
@@ -197,9 +194,6 @@ func (s *Store) getDecryptedVaultKey(vaultId int, user *User, userKey []byte) ([
 	if err != nil {
 		return nil, err
 	}
-	if keyEncrypted == nil {
-		return nil, nil
-	}
 	privateKey, err := aesDecrypt(user.privateKeyEncrypted, userKey)
 	if err != nil {
 		return nil, err
@@ -211,9 +205,6 @@ func (s *Store) ShareVault(vaultId int, target *User, user *User, userKey []byte
 	key, err := s.getDecryptedVaultKey(vaultId, user, userKey)
 	if err != nil {
 		return err
-	}
-	if key == nil {
-		return errors.New("vault key not found")
 	}
 
 	keyEncrypted, err := rsaEncrypt(key, target.publicKey)
@@ -264,9 +255,6 @@ func (s *Store) UpdatePassword(password *Password, vaultId int, user *User, user
 	key, err := s.getDecryptedVaultKey(vaultId, user, userKey)
 	if err != nil {
 		return err
-	}
-	if key == nil {
-		return errors.New("vault key not found")
 	}
 
 	password.passwordEncrypted, err = aesEncrypt([]byte(password.Password), key)

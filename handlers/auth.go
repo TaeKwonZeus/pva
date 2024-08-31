@@ -167,10 +167,23 @@ func (e *Env) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = e.Store.CreateUser(&data.User{
+	user := data.User{
 		Username: c.Username,
-		Role:     data.RoleAdmin,
-	}, c.Password)
+	}
+
+	n, err := e.Store.GetUserCount()
+	if err != nil {
+		log.Println("Server failure:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if n == 0 {
+		user.Role = data.RoleAdmin
+	} else {
+		user.Role = data.RoleViewer
+	}
+
+	err = e.Store.CreateUser(&user, c.Password)
 	if data.IsErrConflict(err) {
 		http.Error(w, "User already exists", http.StatusConflict)
 		return

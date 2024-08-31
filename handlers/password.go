@@ -81,6 +81,10 @@ func (e *Env) UpdateVaultHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = e.Store.UpdateVault(&body)
+	if data.IsErrNotFound(err) {
+		http.Error(w, "Vault not found", http.StatusNotFound)
+		return
+	}
 	if data.IsErrConflict(err) {
 		http.Error(w, "Vault already exists", http.StatusConflict)
 		return
@@ -128,11 +132,7 @@ func (e *Env) ShareVaultHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	targetId, err := strconv.Atoi(r.URL.Query().Get("target"))
-	if err != nil {
-		http.Error(w, "Invalid target id", http.StatusBadRequest)
-		return
-	}
+	targetUsername := r.URL.Query().Get("target")
 
 	user, userKey, ok := authenticate(w, r, data.PermissionManagePasswords)
 	if !ok {
@@ -144,9 +144,14 @@ func (e *Env) ShareVaultHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	target, err := e.Store.GetUser(targetId)
-	if err != nil {
+	target, err := e.Store.GetUserByUsername(targetUsername)
+	if data.IsErrNotFound(err) {
 		http.Error(w, "Target not found", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		log.Println("Server failure:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -168,7 +173,7 @@ func (e *Env) NewPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body data.Password
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err = json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -210,7 +215,7 @@ func (e *Env) UpdatePasswordHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body data.Password
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err = json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
