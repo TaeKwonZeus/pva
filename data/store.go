@@ -31,11 +31,11 @@ func (s *Store) Close() error {
 }
 
 func (s *Store) EncryptPassword(password string) ([]byte, error) {
-	return aesEncrypt([]byte(password), s.passwordKey, nil)
+	return aesEncrypt([]byte(password), s.passwordKey)
 }
 
 func (s *Store) DecryptPassword(passwordEncrypted []byte) (string, error) {
-	password, err := aesDecrypt(passwordEncrypted, s.passwordKey, nil)
+	password, err := aesDecrypt(passwordEncrypted, s.passwordKey)
 	return string(password), err
 }
 
@@ -49,7 +49,7 @@ func (s *Store) VerifyPassword(username string, password string) (verified bool,
 	}
 
 	key := deriveKey(password, user.salt)
-	if _, err := aesDecrypt(user.privateKeyEncrypted, key, nil); err != nil {
+	if _, err := aesDecrypt(user.privateKeyEncrypted, key); err != nil {
 		return false, nil
 	}
 
@@ -76,7 +76,7 @@ func (s *Store) CreateUser(user *User, password string) error {
 	}
 
 	key := deriveKey(password, user.salt)
-	user.privateKeyEncrypted, err = aesEncrypt(privateKey, key, nil)
+	user.privateKeyEncrypted, err = aesEncrypt(privateKey, key)
 	user.publicKey = publicKey
 	if err != nil {
 		return err
@@ -91,7 +91,7 @@ func (s *Store) CreateVault(vault *Vault, owner *User) error {
 		return err
 	}
 
-	vaultKeyEncrypted, err := rsaEncrypt(key, owner.publicKey, []byte("vault"))
+	vaultKeyEncrypted, err := rsaEncrypt(key, owner.publicKey)
 	if err != nil {
 		return err
 	}
@@ -109,28 +109,28 @@ func (s *Store) CreateVault(vault *Vault, owner *User) error {
 
 	var vaultKeys []*vaultKey
 	for _, admin := range admins {
-		vaultKeyEncrypted, err = rsaEncrypt(key, admin.publicKey, []byte("vault"))
+		vaultKeyEncrypted, err = rsaEncrypt(key, admin.publicKey)
 		if err != nil {
 			return err
 		}
 		vaultKeys = append(vaultKeys, &vaultKey{userId: admin.Id, vaultId: vault.Id, keyEncrypted: vaultKeyEncrypted})
 	}
-	return s.db.createVaultKeys(vaultKeys)
+	return s.db.createVaultKeys(vaultKeys...)
 }
 
 func decryptVault(vnk *vaultAndKey, user *User, userKey []byte) (*Vault, error) {
-	privateKey, err := aesDecrypt(user.privateKeyEncrypted, userKey, nil)
+	privateKey, err := aesDecrypt(user.privateKeyEncrypted, userKey)
 	if err != nil {
 		return nil, err
 	}
 
-	vaultKey, err := rsaDecrypt(vnk.keyEncrypted, privateKey, []byte("vault"))
+	vaultKey, err := rsaDecrypt(vnk.keyEncrypted, privateKey)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, p := range vnk.vault.Passwords {
-		passwordDecrypted, err := aesDecrypt(p.passwordEncrypted, vaultKey, nil)
+		passwordDecrypted, err := aesDecrypt(p.passwordEncrypted, vaultKey)
 		if err != nil {
 			return nil, err
 		}
@@ -176,11 +176,11 @@ func (s *Store) CheckVaultOwnership(vaultId int, user *User, userKey []byte) boo
 	if err != nil || keyEncrypted == nil {
 		return false
 	}
-	privateKey, err := aesDecrypt(user.privateKeyEncrypted, userKey, nil)
+	privateKey, err := aesDecrypt(user.privateKeyEncrypted, userKey)
 	if err != nil {
 		return false
 	}
-	_, err = rsaDecrypt(keyEncrypted, privateKey, []byte("vault"))
+	_, err = rsaDecrypt(keyEncrypted, privateKey)
 	return err == nil
 }
 
@@ -192,6 +192,42 @@ func (s *Store) DeleteVault(id int) error {
 	return s.db.deleteVault(id)
 }
 
+func (s *Store) getDecryptedVaultKey(vaultId int, user *User, userKey []byte) ([]byte, error) {
+	keyEncrypted, err := s.db.getVaultKey(vaultId, user.Id)
+	if err != nil {
+		return nil, err
+	}
+	if keyEncrypted == nil {
+		return nil, nil
+	}
+	privateKey, err := aesDecrypt(user.privateKeyEncrypted, userKey)
+	if err != nil {
+		return nil, err
+	}
+	return rsaDecrypt(keyEncrypted, privateKey)
+}
+
+func (s *Store) ShareVault(vaultId int, target *User, user *User, userKey []byte) error {
+	key, err := s.getDecryptedVaultKey(vaultId, user, userKey)
+	if err != nil {
+		return err
+	}
+	if key == nil {
+		return errors.New("vault key not found")
+	}
+
+	keyEncrypted, err := rsaEncrypt(key, target.publicKey)
+	if err != nil {
+		return err
+	}
+
+	return s.db.createVaultKeys(&vaultKey{
+		userId:       target.Id,
+		vaultId:      vaultId,
+		keyEncrypted: keyEncrypted,
+	})
+}
+
 func (s *Store) CreatePassword(password *Password, vaultId int, user *User, userKey []byte) error {
 	password.CreatedAt = time.Now()
 	password.UpdatedAt = time.Now()
@@ -201,15 +237,15 @@ func (s *Store) CreatePassword(password *Password, vaultId int, user *User, user
 		return err
 	}
 
-	privateKey, err := aesDecrypt(user.privateKeyEncrypted, userKey, nil)
+	privateKey, err := aesDecrypt(user.privateKeyEncrypted, userKey)
 	if err != nil {
 		return err
 	}
-	vaultKey, err := rsaDecrypt(vnk.keyEncrypted, privateKey, []byte("vault"))
+	vaultKey, err := rsaDecrypt(vnk.keyEncrypted, privateKey)
 	if err != nil {
 		return err
 	}
-	password.passwordEncrypted, err = aesEncrypt([]byte(password.Password), vaultKey, nil)
+	password.passwordEncrypted, err = aesEncrypt([]byte(password.Password), vaultKey)
 	if err != nil {
 		return err
 	}
@@ -225,21 +261,15 @@ func (s *Store) UpdatePassword(password *Password, vaultId int, user *User, user
 		return s.db.updatePassword(password)
 	}
 
-	keyEncrypted, err := s.db.getVaultKey(vaultId, user.Id)
+	key, err := s.getDecryptedVaultKey(vaultId, user, userKey)
 	if err != nil {
 		return err
 	}
-	if keyEncrypted == nil {
-		return errors.New("failed to find vault key")
+	if key == nil {
+		return errors.New("vault key not found")
 	}
 
-	privateKey, err := aesDecrypt(user.privateKeyEncrypted, userKey, nil)
-	if err != nil {
-		return err
-	}
-	key, err := rsaDecrypt(keyEncrypted, privateKey, []byte("vault"))
-
-	password.passwordEncrypted, err = aesEncrypt([]byte(password.Password), key, nil)
+	password.passwordEncrypted, err = aesEncrypt([]byte(password.Password), key)
 	if err != nil {
 		return err
 	}

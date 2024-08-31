@@ -8,6 +8,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"errors"
 	"golang.org/x/crypto/argon2"
 )
 
@@ -17,6 +18,11 @@ const (
 	aesKeySize  = 32
 	hmacKeySize = 32
 	rsaKeySize  = 4096
+)
+
+var (
+	ErrConflict = errors.New("conflict")
+	ErrNotFound = errors.New("not found")
 )
 
 type Keys struct {
@@ -90,7 +96,7 @@ func deriveKey(password string, salt []byte) []byte {
 	return argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, aesKeySize)
 }
 
-func aesEncrypt(plaintext, key, aad []byte) ([]byte, error) {
+func aesEncrypt(plaintext, key []byte) ([]byte, error) {
 	nonce := make([]byte, nonceSize)
 	if _, err := rand.Read(nonce); err != nil {
 		return nil, err
@@ -105,11 +111,11 @@ func aesEncrypt(plaintext, key, aad []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	ciphertext := gcm.Seal(nil, nonce, plaintext, aad)
+	ciphertext := gcm.Seal(nil, nonce, plaintext, nil)
 	return bytes.Join([][]byte{nonce, ciphertext}, nil), nil
 }
 
-func aesDecrypt(ciphertext, key, aad []byte) ([]byte, error) {
+func aesDecrypt(ciphertext, key []byte) ([]byte, error) {
 	nonce := ciphertext[:nonceSize]
 	ciphertext = ciphertext[nonceSize:]
 
@@ -122,7 +128,7 @@ func aesDecrypt(ciphertext, key, aad []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	plaintext, err := gcm.Open(nil, nonce, ciphertext, aad)
+	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -130,18 +136,18 @@ func aesDecrypt(ciphertext, key, aad []byte) ([]byte, error) {
 	return plaintext, nil
 }
 
-func rsaEncrypt(plaintext, key, label []byte) ([]byte, error) {
+func rsaEncrypt(plaintext, key []byte) ([]byte, error) {
 	pk, err := x509.ParsePKCS1PublicKey(key)
 	if err != nil {
 		return nil, err
 	}
-	return rsa.EncryptOAEP(sha256.New(), rand.Reader, pk, plaintext, label)
+	return rsa.EncryptOAEP(sha256.New(), rand.Reader, pk, plaintext, nil)
 }
 
-func rsaDecrypt(ciphertext, key, label []byte) ([]byte, error) {
+func rsaDecrypt(ciphertext, key []byte) ([]byte, error) {
 	pk, err := x509.ParsePKCS1PrivateKey(key)
 	if err != nil {
 		return nil, err
 	}
-	return rsa.DecryptOAEP(sha256.New(), rand.Reader, pk, ciphertext, label)
+	return rsa.DecryptOAEP(sha256.New(), rand.Reader, pk, ciphertext, nil)
 }

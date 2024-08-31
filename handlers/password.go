@@ -16,14 +16,8 @@ func (e *Env) NewVaultHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, ok := r.Context().Value("user").(*data.User)
+	user, _, ok := authenticate(w, r, data.PermissionManagePasswords)
 	if !ok {
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	}
-
-	if !data.CheckPermission(user.Role, data.PermissionManagePasswords) {
-		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 		return
 	}
 
@@ -42,22 +36,8 @@ func (e *Env) NewVaultHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (e *Env) GetVaultsHandler(w http.ResponseWriter, r *http.Request) {
-	user, ok := r.Context().Value("user").(*data.User)
+	user, userKey, ok := authenticate(w, r, data.PermissionViewPasswords)
 	if !ok {
-		log.Println("could not get user")
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	}
-
-	userKey, ok := r.Context().Value("userKey").([]byte)
-	if !ok {
-		log.Println("could not get user key")
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	}
-
-	if !data.CheckPermission(user.Role, data.PermissionViewPasswords) {
-		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 		return
 	}
 
@@ -90,22 +70,12 @@ func (e *Env) UpdateVaultHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	body.Id = id
 
-	user, ok := r.Context().Value("user").(*data.User)
+	user, userKey, ok := authenticate(w, r, data.PermissionManagePasswords)
 	if !ok {
-		log.Println("could not get user")
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
-	userKey, ok := r.Context().Value("userKey").([]byte)
-	if !ok {
-		log.Println("could not get user key")
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	}
-
-	if !data.CheckPermission(user.Role, data.PermissionManagePasswords) ||
-		!e.Store.CheckVaultOwnership(id, user, userKey) {
+	if !e.Store.CheckVaultOwnership(id, user, userKey) {
 		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 		return
 	}
@@ -131,22 +101,12 @@ func (e *Env) DeleteVaultHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, ok := r.Context().Value("user").(*data.User)
+	user, userKey, ok := authenticate(w, r, data.PermissionManagePasswords)
 	if !ok {
-		log.Println("could not get user")
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
-	userKey, ok := r.Context().Value("userKey").([]byte)
-	if !ok {
-		log.Println("could not get user key")
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	}
-
-	if !data.CheckPermission(user.Role, data.PermissionManagePasswords) ||
-		!e.Store.CheckVaultOwnership(id, user, userKey) {
+	if !e.Store.CheckVaultOwnership(id, user, userKey) {
 		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 		return
 	}
@@ -161,8 +121,47 @@ func (e *Env) DeleteVaultHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (e *Env) ShareVaultHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "Invalid vault id", http.StatusBadRequest)
+		return
+	}
+
+	targetId, err := strconv.Atoi(r.URL.Query().Get("target"))
+	if err != nil {
+		http.Error(w, "Invalid target id", http.StatusBadRequest)
+		return
+	}
+
+	user, userKey, ok := authenticate(w, r, data.PermissionManagePasswords)
+	if !ok {
+		return
+	}
+
+	if !e.Store.CheckVaultOwnership(id, user, userKey) {
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		return
+	}
+
+	target, err := e.Store.GetUser(targetId)
+	if err != nil {
+		http.Error(w, "Target not found", http.StatusNotFound)
+		return
+	}
+
+	err = e.Store.ShareVault(id, target, user, userKey)
+	if err != nil {
+		log.Println("Server failure:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (e *Env) NewPasswordHandler(w http.ResponseWriter, r *http.Request) {
-	vaultId, err := strconv.Atoi(chi.URLParam(r, "id"))
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		http.Error(w, "Invalid vault id", http.StatusBadRequest)
 		return
@@ -174,27 +173,17 @@ func (e *Env) NewPasswordHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, ok := r.Context().Value("user").(*data.User)
+	user, userKey, ok := authenticate(w, r, data.PermissionManagePasswords)
 	if !ok {
-		log.Println("could not get user")
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
-	userKey, ok := r.Context().Value("userKey").([]byte)
-	if !ok {
-		log.Println("could not get user key")
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	}
-
-	if !data.CheckPermission(user.Role, data.PermissionManagePasswords) ||
-		!e.Store.CheckVaultOwnership(vaultId, user, userKey) {
+	if !e.Store.CheckVaultOwnership(id, user, userKey) {
 		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 		return
 	}
 
-	err = e.Store.CreatePassword(&body, vaultId, user, userKey)
+	err = e.Store.CreatePassword(&body, id, user, userKey)
 	if data.IsErrConflict(err) {
 		http.Error(w, "Password already exists in the same vault", http.StatusConflict)
 		return
@@ -227,22 +216,12 @@ func (e *Env) UpdatePasswordHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	body.Id = passwordId
 
-	user, ok := r.Context().Value("user").(*data.User)
+	user, userKey, ok := authenticate(w, r, data.PermissionManagePasswords)
 	if !ok {
-		log.Println("could not get user")
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
-	userKey, ok := r.Context().Value("userKey").([]byte)
-	if !ok {
-		log.Println("could not get user key")
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	}
-
-	if !data.CheckPermission(user.Role, data.PermissionManagePasswords) ||
-		!e.Store.CheckVaultOwnership(vaultId, user, userKey) {
+	if !e.Store.CheckVaultOwnership(vaultId, user, userKey) {
 		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 		return
 	}
@@ -273,22 +252,12 @@ func (e *Env) DeletePasswordHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, ok := r.Context().Value("user").(*data.User)
+	user, userKey, ok := authenticate(w, r, data.PermissionManagePasswords)
 	if !ok {
-		log.Println("could not get user")
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
-	userKey, ok := r.Context().Value("userKey").([]byte)
-	if !ok {
-		log.Println("could not get user key")
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	}
-
-	if !data.CheckPermission(user.Role, data.PermissionManagePasswords) ||
-		!e.Store.CheckVaultOwnership(vaultId, user, userKey) {
+	if !e.Store.CheckVaultOwnership(vaultId, user, userKey) {
 		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 		return
 	}

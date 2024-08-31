@@ -63,6 +63,9 @@ func (d *db) getUser(id int) (user *User, err error) {
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
+	if err != nil {
+		return nil, err
+	}
 
 	user.salt, err = base64.StdEncoding.DecodeString(salt)
 	if err != nil {
@@ -190,7 +193,7 @@ type vaultKey struct {
 	keyEncrypted []byte
 }
 
-func (d *db) createVaultKeys(keys []*vaultKey) error {
+func (d *db) createVaultKeys(keys ...*vaultKey) error {
 	tx, err := d.pool.Begin()
 	if err != nil {
 		return err
@@ -331,6 +334,7 @@ func (d *db) updateVault(vault *Vault) error {
 }
 
 func (d *db) deleteVault(id int) error {
+	// All passwords get cascade deleted by sqlite
 	_, err := d.pool.Exec("DELETE FROM vaults WHERE id=?", id)
 	return err
 }
