@@ -30,10 +30,6 @@ func IsErrNotFound(err error) bool {
 func (d *db) getIndex(id int) (index *Index, err error) {
 	index = new(Index)
 
-	index.User, err = d.getUser(id)
-	if err != nil {
-		return nil, err
-	}
 	vnks, err := d.getVaults(id)
 	if err != nil {
 		return nil, err

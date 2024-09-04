@@ -76,6 +76,5 @@ type Password struct {
 }
 
 type Index struct {
-	User   *User    `json:"user"`
 	Vaults []*Vault `json:"vaults"`
 }
