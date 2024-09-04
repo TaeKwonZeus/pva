@@ -4,6 +4,7 @@ import {
   Container,
   Flex,
   Heading,
+  HoverCard,
   Link,
   TextField,
 } from "@radix-ui/themes";
@@ -16,6 +17,51 @@ import {
 } from "@radix-ui/react-icons";
 import { Outlet, useNavigate } from "react-router-dom";
 import { logOut } from "./auth.js";
+import { useState } from "react";
+
+function SearchBar() {
+  const [index, setIndex] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+
+  async function loadIndex() {
+    if (loaded) return;
+
+    const res = await fetch("/api/index");
+    if (!res.ok) {
+      alert(res.statusText + " " + (await res.text()));
+      return;
+    }
+
+    setIndex(await res.json());
+    setLoaded(true);
+  }
+
+  const [focused, setFocused] = useState(false);
+  const [text, setText] = useState("");
+
+  return (
+    <Box onMouseEnter={loadIndex}>
+      <TextField.Root
+        radius="full"
+        variant="surface"
+        style={{ width: 400 }}
+        tabIndex={1}
+        placeholder="Search"
+        onChange={(e) => setText(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+      >
+        <TextField.Slot>
+          <MagnifyingGlassIcon />
+        </TextField.Slot>
+      </TextField.Root>
+      {/* TODO fix positioning */}
+      <HoverCard.Root open={focused && text !== ""}>
+        <HoverCard.Content width="300px">AAAAAAAA</HoverCard.Content>
+      </HoverCard.Root>
+    </Box>
+  );
+}
 
 function App() {
   const navigate = useNavigate();
@@ -47,19 +93,7 @@ function App() {
             <Heading>PVA</Heading>
           </Flex>
         </Link>
-        <Box>
-          <TextField.Root
-            radius="full"
-            variant="surface"
-            style={{ width: 400 }}
-            tabIndex={1}
-            placeholder="Search"
-          >
-            <TextField.Slot>
-              <MagnifyingGlassIcon />
-            </TextField.Slot>
-          </TextField.Root>
-        </Box>
+        <SearchBar />
         <Button
           variant="ghost"
           color="gray"
