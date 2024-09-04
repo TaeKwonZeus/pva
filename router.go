@@ -3,14 +3,39 @@ package main
 import (
 	"github.com/TaeKwonZeus/pva/frontend"
 	"github.com/TaeKwonZeus/pva/handlers"
+	"github.com/charmbracelet/log"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"net/http"
 )
 
+type loggingRw struct {
+	http.ResponseWriter
+	status int
+}
+
+func (lrw *loggingRw) WriteHeader(status int) {
+	lrw.status = status
+	lrw.ResponseWriter.WriteHeader(status)
+}
+
+func logger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		lrw := loggingRw{ResponseWriter: w, status: http.StatusOK}
+
+		next.ServeHTTP(&lrw, r)
+
+		if lrw.status >= 500 {
+			log.Info(r.URL.Path, "method", r.Method, "code", lrw.status)
+		} else {
+			log.Info(r.URL.Path, "method", r.Method, "code", lrw.status)
+		}
+	})
+}
+
 func newRouter(env *handlers.Env) http.Handler {
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
+	r.Use(logger)
 
 	r.Route("/api/auth", func(r chi.Router) {
 		r.Use(middleware.RequestID)
@@ -27,6 +52,8 @@ func newRouter(env *handlers.Env) http.Handler {
 		r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte("pong"))
 		})
+
+		r.Get("/index", env.GetIndexHandler)
 
 		r.Route("/vaults", func(r chi.Router) {
 			r.Get("/", env.GetVaultsHandler)

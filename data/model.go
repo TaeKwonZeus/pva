@@ -68,9 +68,14 @@ type Password struct {
 	Id          int       `json:"id,omitempty"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
-	Password    string    `json:"password"`
+	Password    string    `json:"password,omitempty"`
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
 
 	passwordEncrypted []byte
+}
+
+type Index struct {
+	User   *User    `json:"user"`
+	Vaults []*Vault `json:"vaults"`
 }

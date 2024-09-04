@@ -8,7 +8,6 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
-	"errors"
 	"golang.org/x/crypto/argon2"
 )
 
@@ -18,11 +17,6 @@ const (
 	aesKeySize  = 32
 	hmacKeySize = 32
 	rsaKeySize  = 4096
-)
-
-var (
-	ErrConflict = errors.New("conflict")
-	ErrNotFound = errors.New("not found")
 )
 
 type Keys struct {

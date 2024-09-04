@@ -27,6 +27,26 @@ func IsErrNotFound(err error) bool {
 	return errors.Is(err, sql.ErrNoRows)
 }
 
+func (d *db) getIndex(id int) (index *Index, err error) {
+	index = new(Index)
+
+	index.User, err = d.getUser(id)
+	if err != nil {
+		return nil, err
+	}
+	vnks, err := d.getVaults(id)
+	if err != nil {
+		return nil, err
+	}
+
+	index.Vaults = make([]*Vault, len(vnks))
+	for i, vnk := range vnks {
+		index.Vaults[i] = vnk.vault
+	}
+
+	return
+}
+
 func (d *db) getUserCount() (n int, err error) {
 	row := d.pool.QueryRow("SELECT COUNT(*) FROM users")
 	err = row.Scan(&n)

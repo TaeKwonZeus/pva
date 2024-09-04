@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/TaeKwonZeus/pva/data"
 	"github.com/TaeKwonZeus/pva/handlers"
+	"github.com/charmbracelet/log"
 	"io/fs"
-	"log"
 	"net/http"
 	"path"
 
@@ -21,9 +21,8 @@ const (
 )
 
 func main() {
-	log.SetFlags(log.Ldate | log.Lshortfile)
 	if err := setupDirectory(); err != nil {
-		log.Fatalf("Failed to set up %s; please run as root", directory)
+		log.Fatal("failed to set up working directory; please run as root", "dir", directory)
 	}
 
 	cfg, err := config.NewConfig(path.Join(directory, configFilename))
@@ -45,7 +44,7 @@ func main() {
 
 	env := &handlers.Env{Store: store, Keys: keys}
 
-	log.Printf("Listening at https://localhost:%d", cfg.Port)
+	log.Info("starting server", "port", cfg.Port)
 	err = http.ListenAndServeTLS(
 		fmt.Sprintf(":%d", cfg.Port),
 		path.Join(directory, certFilename),
@@ -54,9 +53,8 @@ func main() {
 	)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			log.Fatalf("Missing %s or %s. Please provide a valid TLS certificate and private key in %s.",
-				certFilename, keyFilename, directory)
+			log.Fatal("missing cert or key",
+				"cert", certFilename, "key", keyFilename, "dir", directory)
 		}
-		log.Fatal(err)
 	}
 }

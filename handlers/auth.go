@@ -7,8 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/TaeKwonZeus/pva/data"
+	"github.com/charmbracelet/log"
 	"github.com/golang-jwt/jwt"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -46,42 +46,43 @@ func (e *Env) AuthMiddleware(next http.Handler) http.Handler {
 			return e.Keys.SigningKey(), nil
 		})
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusUnauthorized)
+			log.Warn(err.Error(), "token", token)
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		claims, ok := t.Claims.(*jwtClaims)
 		if !t.Valid || !ok {
-			log.Println(t.Valid, ok)
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			http.Error(w, "invalid token", http.StatusUnauthorized)
 			return
 		}
 		id, err := strconv.Atoi(claims.Subject)
 		if err != nil {
-			http.Error(w, "Failed to parse sub", http.StatusUnauthorized)
+			http.Error(w, "failed to parse sub", http.StatusUnauthorized)
 			return
 		}
 
 		user, err := e.Store.GetUser(id)
 		if err != nil {
-			http.Error(w, "Failed to get user", http.StatusUnauthorized)
+			http.Error(w, "failed to get user", http.StatusUnauthorized)
 			return
 		}
 		if user == nil {
-			http.Error(w, "User not found", http.StatusUnauthorized)
+			http.Error(w, "user not found", http.StatusUnauthorized)
 			return
 		}
 
 		passwdBytes, err := base64.StdEncoding.DecodeString(claims.Passwd)
 		if err != nil {
-			log.Println("Failed to decode passwd")
-			http.Error(w, "Failed to decode passwd", http.StatusUnauthorized)
+			log.Error("failed to decode", "passwd", claims.Passwd)
+			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
 		password, err := e.Store.DecryptPassword(passwdBytes)
 		if err != nil {
-			http.Error(w, "Failed to decrypt password", http.StatusUnauthorized)
+			log.Warn("failed to decrypt", "passwd", claims.Passwd)
+			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 		userKey := user.DeriveKey(password)
@@ -115,8 +116,8 @@ func (e *Env) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	passwd, err := e.Store.EncryptPassword(c.Password)
 	if err != nil {
-		log.Println("Server failure:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Error(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -140,8 +141,8 @@ func (e *Env) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Passwd: base64.StdEncoding.EncodeToString(passwd),
 	}).SignedString(e.Keys.SigningKey())
 	if err != nil {
-		log.Println("Server failure:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Error(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -173,8 +174,8 @@ func (e *Env) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	n, err := e.Store.GetUserCount()
 	if err != nil {
-		log.Println("Server failure:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Error(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	if n == 0 {
@@ -185,12 +186,12 @@ func (e *Env) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = e.Store.CreateUser(&user, c.Password)
 	if data.IsErrConflict(err) {
-		http.Error(w, "User already exists", http.StatusConflict)
+		http.Error(w, "user already exists", http.StatusConflict)
 		return
 	}
 	if err != nil {
-		log.Println("Server failure:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Error(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 

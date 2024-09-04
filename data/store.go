@@ -52,6 +52,10 @@ func (s *Store) VerifyPassword(username string, password string) (verified bool,
 	return true, user
 }
 
+func (s *Store) GetIndex(id int) (index *Index, err error) {
+	return s.db.getIndex(id)
+}
+
 func (s *Store) GetUserCount() (n int, err error) {
 	return s.db.getUserCount()
 }
