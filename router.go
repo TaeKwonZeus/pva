@@ -89,8 +89,8 @@ func newRouter(env *handlers.Env) http.Handler {
 	})
 
 	r.Route("/", func(r chi.Router) {
-		r.Get("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
-			http.ServeFileFS(w, r, frontend.Embed(), "favicon.ico")
+		r.Get("/vite.svg", func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFileFS(w, r, frontend.Embed(), "vite.svg")
 		})
 		r.Mount("/assets/", http.FileServerFS(frontend.Embed()))
 		r.Get("/*", func(w http.ResponseWriter, r *http.Request) {

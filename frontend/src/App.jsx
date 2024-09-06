@@ -6,9 +6,12 @@ import {
   Heading,
   HoverCard,
   Link,
+  Separator,
+  Text,
   TextField,
 } from "@radix-ui/themes";
 import {
+  ArchiveIcon,
   FileIcon,
   HomeIcon,
   LockClosedIcon,
@@ -18,6 +21,33 @@ import {
 import { Outlet, useNavigate } from "react-router-dom";
 import { logOut } from "./auth.js";
 import { useState } from "react";
+
+const searchEntryIcons = {
+  vault: <ArchiveIcon />,
+  password: <LockClosedIcon />,
+};
+
+function SearchEntries({ index, text }) {
+  const filtered = index.filter((item) =>
+    item.title.toLowerCase().trim().includes(text.toLowerCase().trim()),
+  );
+  if (filtered.length === 0) {
+    return <Text size="2">{"Didn't find anything :P"}</Text>;
+  }
+
+  return filtered.map((entry, i) => (
+    <>
+      <Link href={entry.url}>
+        <Flex gap="2" key={i} align="center">
+          <Box>{searchEntryIcons[entry["type"]]}</Box>
+          <Text size="2">{entry.title}</Text>
+        </Flex>
+      </Link>
+
+      {i !== filtered.length - 1 && <Separator size="4" />}
+    </>
+  ));
+}
 
 function SearchBar() {
   const [index, setIndex] = useState([]);
@@ -40,11 +70,11 @@ function SearchBar() {
   const [text, setText] = useState("");
 
   return (
-    <Box onMouseEnter={loadIndex}>
+    <Flex onMouseEnter={loadIndex} direction="column">
       <TextField.Root
         radius="full"
         variant="surface"
-        style={{ width: 400 }}
+        style={{ width: "400px" }}
         tabIndex={1}
         placeholder="Search"
         onChange={(e) => setText(e.target.value)}
@@ -57,9 +87,16 @@ function SearchBar() {
       </TextField.Root>
       {/* TODO fix positioning */}
       <HoverCard.Root open={focused && text !== ""}>
-        <HoverCard.Content width="300px">AAAAAAAA</HoverCard.Content>
+        <HoverCard.Trigger>
+          <Button style={{ width: 0, height: 0 }} />
+        </HoverCard.Trigger>
+        <HoverCard.Content width="400px">
+          <Flex direction="column" gap="2">
+            <SearchEntries index={index} text={text} />
+          </Flex>
+        </HoverCard.Content>
       </HoverCard.Root>
-    </Box>
+    </Flex>
   );
 }
 

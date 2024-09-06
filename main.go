@@ -44,7 +44,7 @@ func main() {
 
 	env := &handlers.Env{Store: store, Keys: keys}
 
-	log.Info("starting server", "port", cfg.Port)
+	log.Infof("starting server on https://127.0.0.1:%d", cfg.Port)
 	err = http.ListenAndServeTLS(
 		fmt.Sprintf(":%d", cfg.Port),
 		path.Join(directory, certFilename),
@@ -56,5 +56,6 @@ func main() {
 			log.Fatal("missing cert or key",
 				"cert", certFilename, "key", keyFilename, "dir", directory)
 		}
+		log.Fatal(err)
 	}
 }

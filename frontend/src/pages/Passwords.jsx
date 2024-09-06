@@ -225,27 +225,29 @@ function DeletePasswordDialog({ vaultId, passwordId }) {
 function Password({ password, vaultId, ...otherProps }) {
   return (
     <>
-      <Flex align="center" gap="4" {...otherProps}>
-        <Flex width="15px" height="15px" align="center" justify="center" ml="5">
-          <LockClosedIcon />
-        </Flex>
-        <Box width="200px">{password.name}</Box>
-        <Box width="200px">{password.description}</Box>
-        <Flex gap="2">
-          <IconButton
-            variant="surface"
-            onClick={() => navigator.clipboard.writeText(password.password)}
-            title="Copy to clipboard"
-          >
-            <ClipboardCopyIcon />
-          </IconButton>
+      <Flex direction="column" ml="5" gap="2">
+        <Flex align="center" gap="4" {...otherProps}>
+          <Flex width="15px" height="15px" align="center" justify="center">
+            <LockClosedIcon />
+          </Flex>
+          <Box width="200px">{password.name}</Box>
+          <Box width="200px">{password.description}</Box>
+          <Flex gap="2">
+            <IconButton
+              variant="surface"
+              onClick={() => navigator.clipboard.writeText(password.password)}
+              title="Copy to clipboard"
+            >
+              <ClipboardCopyIcon />
+            </IconButton>
 
-          <EditPasswordDialog vaultId={vaultId} passwordId={password.id} />
+            <EditPasswordDialog vaultId={vaultId} passwordId={password.id} />
 
-          <DeletePasswordDialog vaultId={vaultId} passwordId={password.id} />
+            <DeletePasswordDialog vaultId={vaultId} passwordId={password.id} />
+          </Flex>
         </Flex>
+        <Separator size="4" />
       </Flex>
-      <Separator size="4" />
     </>
   );
 }
