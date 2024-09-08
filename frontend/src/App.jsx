@@ -28,6 +28,8 @@ const searchEntryIcons = {
 };
 
 function SearchEntries({ index, text }) {
+  if (text === "") return [];
+
   const filtered = index.filter((item) =>
     item.title.toLowerCase().trim().includes(text.toLowerCase().trim()),
   );

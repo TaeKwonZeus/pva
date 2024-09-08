@@ -14,7 +14,6 @@ import Auth from "./pages/Auth.jsx";
 import Passwords from "./pages/Passwords.jsx";
 
 async function authLoader() {
-  console.log(await isLoggedIn());
   return (await isLoggedIn()) ? null : redirect("/auth");
 }
 
@@ -39,10 +38,6 @@ const router = createBrowserRouter([
       },
     ],
   },
-  // {
-  //   path: "/login",
-  //   element: <Auth />,
-  // },
 ]);
 
 document.body.style.margin = "0";

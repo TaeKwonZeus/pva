@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"github.com/TaeKwonZeus/pva/data"
 	"github.com/TaeKwonZeus/pva/handlers"
+	"github.com/TaeKwonZeus/pva/network"
 	"github.com/charmbracelet/log"
 	"io/fs"
+	stdlog "log"
 	"net/http"
 	"path"
 
@@ -20,7 +22,18 @@ const (
 	keyFilename    = "key.pem"
 )
 
+type lw struct{}
+
+func (l lw) Write(p []byte) (n int, err error) {
+	log.Info(string(p))
+	return
+}
+
 func main() {
+	// Route logs from other packages to charm logger
+	stdlog.SetFlags(0)
+	stdlog.SetOutput(lw{})
+
 	if err := setupDirectory(); err != nil {
 		log.Fatal("failed to set up working directory; please run as root", "dir", directory)
 	}
@@ -44,7 +57,12 @@ func main() {
 
 	env := &handlers.Env{Store: store, Keys: keys}
 
-	log.Infof("starting server on https://127.0.0.1:%d", cfg.Port)
+	ip, err := network.GetOutboundIP()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Infof("starting server on https://%s:%d", ip, cfg.Port)
 	err = http.ListenAndServeTLS(
 		fmt.Sprintf(":%d", cfg.Port),
 		path.Join(directory, certFilename),
