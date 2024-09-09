@@ -2,6 +2,7 @@ package network
 
 import (
 	"encoding/base64"
+	"errors"
 	"github.com/charmbracelet/log"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
@@ -9,12 +10,7 @@ import (
 	"net"
 	"os"
 	"sync"
-	"sync/atomic"
 	"time"
-)
-
-var (
-	Timeout time.Duration = time.Second * 5
 )
 
 func GetOutboundIP() (ip net.IP, err error) {
@@ -32,23 +28,48 @@ type Device struct {
 	MAC  net.HardwareAddr
 }
 
-func Scan() (devices []Device, err error) {
+type options struct {
+	timeout time.Duration
+}
+
+var defaultOptions = options{
+	timeout: time.Second * 3,
+}
+
+type Option func(*options) error
+
+func WithTimeout(timeout time.Duration) Option {
+	return func(o *options) error {
+		if timeout.Seconds() < 1 {
+			return errors.New("timeout cannot be less than 1 second")
+		}
+		o.timeout = timeout
+		return nil
+	}
+}
+
+func Scan(opts ...Option) (devices []Device, err error) {
+	opt := defaultOptions
+	for _, o := range opts {
+		if err = o(&opt); err != nil {
+			return nil, err
+		}
+	}
+
 	conn, err := icmp.ListenPacket("ip4:icmp", "0.0.0.0")
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
-	var sent atomic.Int32
+	var sent int
 	for _, ip := range localIPs() {
-		go func() {
-			err := sendICMP(conn, ip)
-			if err != nil {
-				log.Error("ICMP send error", "ip", ip, "err", err)
-				return
-			}
-			sent.Add(1)
-		}()
+		err := sendICMP(conn, ip)
+		if err != nil {
+			log.Error("ICMP send error", "ip", ip, "err", err)
+			continue
+		}
+		sent++
 	}
 
 	done := make(chan error)
@@ -56,9 +77,8 @@ func Scan() (devices []Device, err error) {
 
 	var eg errgroup.Group
 
-	n := sent.Load()
-	log.Debugf("sent %d echo packets", n)
-	for range n {
+	log.Debugf("sent %d echo packets", sent)
+	for range sent {
 		eg.Go(func() error {
 			return recvICMP(conn, res.c)
 		})
@@ -69,16 +89,18 @@ func Scan() (devices []Device, err error) {
 
 	select {
 	case err = <-done:
+		close(res.c)
 		return res.get(), err
-	case <-time.After(Timeout):
+	case <-time.After(opt.timeout):
 		log.Warn("ICMP timeout")
+		close(res.c)
 		return res.get(), nil
 	}
 }
 
 func localIPs() []net.IP {
 	var ips []net.IP
-	for i := byte(1); i < 254; i++ {
+	for i := byte(1); i < 255; i++ {
 		ips = append(ips, net.IPv4(192, 168, 0, i))
 	}
 	return ips
@@ -131,11 +153,11 @@ func recvICMP(conn *icmp.PacketConn, res chan<- Device) error {
 			default:
 				dest = "dest"
 			}
-			log.Warn("ICMP unreachable", "dest", dest)
+			log.Warn("ICMP unreachable", "dest", dest, "ip", peerIP.String())
 		case *icmp.PacketTooBig:
-			log.Warn("ICMP packet too big", "mtu", b.MTU)
+			log.Warn("ICMP packet too big", "mtu", b.MTU, "ip", peerIP.String())
 		default:
-			log.Warn("ICMP non-echo response", "response", b)
+			log.Warn("ICMP non-echo response", "response", b, "ip", peerIP.String())
 		}
 		return nil
 	}
