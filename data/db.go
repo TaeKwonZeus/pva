@@ -63,12 +63,12 @@ func (d *db) createUser(user *User) error {
 		return err
 	}
 	id, _ := res.LastInsertId()
-	user.Id = int(id)
+	user.ID = int(id)
 	return nil
 }
 
 func (d *db) getUser(id int) (user *User, err error) {
-	user = &User{Id: id}
+	user = &User{ID: id}
 
 	var salt string
 	var publicKey string
@@ -109,7 +109,7 @@ func (d *db) getUserByUsername(username string) (user *User, err error) {
 
 	row := d.pool.QueryRow(`SELECT id, role, salt, public_key, private_key_encrypted
 		FROM users WHERE username=?`, username)
-	err = row.Scan(&user.Id, &user.Role, &salt, &publicKey, &privateKeyEncrypted)
+	err = row.Scan(&user.ID, &user.Role, &salt, &publicKey, &privateKeyEncrypted)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func (d *db) getAdmins() (users []*User, err error) {
 		var publicKey string
 		var privateKeyEncrypted string
 
-		if err = rows.Scan(&user.Id, &user.Username, &salt, &publicKey, &privateKeyEncrypted); err != nil {
+		if err = rows.Scan(&user.ID, &user.Username, &salt, &publicKey, &privateKeyEncrypted); err != nil {
 			return nil, err
 		}
 
@@ -190,7 +190,7 @@ func (d *db) createVault(vault *Vault, vaultKeyEncrypted []byte) error {
 	}
 
 	id, _ := res.LastInsertId()
-	vault.Id = int(id)
+	vault.ID = int(id)
 
 	_, err = tx.Exec("INSERT INTO vault_keys (user_id, vault_id, vault_key_encrypted) VALUES (?, ?, ?)",
 		vault.OwnerId, id, base64.StdEncoding.EncodeToString(vaultKeyEncrypted))
@@ -254,7 +254,7 @@ func (d *db) getVaultKey(id, userId int) (key []byte, err error) {
 
 func (d *db) getVault(id, userId int) (vnk *vaultAndKey, err error) {
 	// Get vault by id
-	vault := &Vault{Id: id}
+	vault := &Vault{ID: id}
 	row := d.pool.QueryRow("SELECT name, owner_id FROM vaults where id=?", id)
 	err = row.Scan(&vault.Name, &vault.OwnerId)
 	if err != nil {
@@ -262,7 +262,7 @@ func (d *db) getVault(id, userId int) (vnk *vaultAndKey, err error) {
 	}
 
 	// Get vault key
-	key, err := d.getVaultKey(vault.Id, userId)
+	key, err := d.getVaultKey(vault.ID, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -281,7 +281,7 @@ func (d *db) getVault(id, userId int) (vnk *vaultAndKey, err error) {
 		var createdAtTimestamp int64
 		var updatedAtTimestamp int64
 
-		if err = rows.Scan(&password.Id, &password.Name, &password.Description, &password.passwordEncrypted,
+		if err = rows.Scan(&password.ID, &password.Name, &password.Description, &password.passwordEncrypted,
 			&createdAtTimestamp, &updatedAtTimestamp); err != nil {
 			return nil, err
 		}
@@ -329,7 +329,7 @@ func (d *db) getVaults(userId int) (vnks []*vaultAndKey, err error) {
 
 func (d *db) updateVault(vault *Vault) error {
 	if vault.Name != "" {
-		_, err := d.pool.Exec("UPDATE vaults SET name=? WHERE id=?", vault.Name, vault.Id)
+		_, err := d.pool.Exec("UPDATE vaults SET name=? WHERE id=?", vault.Name, vault.ID)
 		if err != nil {
 			return err
 		}
@@ -359,7 +359,7 @@ func (d *db) createPassword(password *Password, vaultId int) error {
 		return err
 	}
 	id, _ := res.LastInsertId()
-	password.Id = int(id)
+	password.ID = int(id)
 	return nil
 }
 
@@ -374,27 +374,27 @@ func (d *db) updatePassword(password *Password) error {
 
 	if password.Name != "" {
 		updated = true
-		_, err = tx.Exec("UPDATE passwords SET name=? WHERE id=?", password.Name, password.Id)
+		_, err = tx.Exec("UPDATE passwords SET name=? WHERE id=?", password.Name, password.ID)
 		if err != nil {
 			return err
 		}
 	}
 	if password.Description != "" {
 		updated = true
-		_, err = tx.Exec("UPDATE passwords SET description=? WHERE id=?", password.Description, password.Id)
+		_, err = tx.Exec("UPDATE passwords SET description=? WHERE id=?", password.Description, password.ID)
 		if err != nil {
 			return err
 		}
 	}
 	if password.passwordEncrypted != nil {
 		updated = true
-		_, err = tx.Exec("UPDATE passwords SET password_encrypted=? WHERE id=?", password.passwordEncrypted, password.Id)
+		_, err = tx.Exec("UPDATE passwords SET password_encrypted=? WHERE id=?", password.passwordEncrypted, password.ID)
 		if err != nil {
 			return err
 		}
 	}
 	if updated {
-		_, err = tx.Exec("UPDATE passwords SET updated_at=? WHERE id=?", password.UpdatedAt.Unix(), password.Id)
+		_, err = tx.Exec("UPDATE passwords SET updated_at=? WHERE id=?", password.UpdatedAt.Unix(), password.ID)
 		if err != nil {
 			return err
 		}

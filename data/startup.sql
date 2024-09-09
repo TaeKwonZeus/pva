@@ -1,4 +1,4 @@
-PRAGMA foreign_keys=ON;
+PRAGMA foreign_keys= ON;
 
 CREATE TABLE IF NOT EXISTS users
 (
@@ -33,11 +33,20 @@ CREATE TABLE IF NOT EXISTS passwords
 
 CREATE TABLE IF NOT EXISTS vault_keys
 (
-    user_id  INTEGER REFERENCES users (id) ON DELETE CASCADE,
-    vault_id INTEGER REFERENCES vaults (id) ON DELETE CASCADE,
+    user_id             INTEGER REFERENCES users (id) ON DELETE CASCADE,
+    vault_id            INTEGER REFERENCES vaults (id) ON DELETE CASCADE,
 
     -- Encrypted with user's public key
     vault_key_encrypted TEXT NOT NULL,
 
     PRIMARY KEY (user_id, vault_id)
+);
+
+CREATE TABLE IF NOT EXISTS devices
+(
+    id           INTEGER PRIMARY KEY,
+    ip           TEXT UNIQUE NOT NULL,
+    mac          TEXT,
+    network_name TEXT,
+    name         TEXT
 );

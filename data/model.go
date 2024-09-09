@@ -1,6 +1,7 @@
 package data
 
 import (
+	"database/sql"
 	"log"
 	"slices"
 	"time"
@@ -24,11 +25,13 @@ type Permission int
 const (
 	PermissionViewPasswords Permission = iota
 	PermissionManagePasswords
+	PermissionViewDevices
+	PermissionManageDevices
 )
 
 var permissions = map[Role][]Permission{
-	RoleManager: {PermissionViewPasswords, PermissionManagePasswords},
-	RoleViewer:  {PermissionViewPasswords},
+	RoleManager: {PermissionViewPasswords, PermissionManagePasswords, PermissionViewDevices, PermissionManageDevices},
+	RoleViewer:  {PermissionViewPasswords, PermissionViewDevices},
 }
 
 func CheckPermission(role Role, permission Permission) bool {
@@ -44,7 +47,7 @@ func CheckPermission(role Role, permission Permission) bool {
 }
 
 type User struct {
-	Id       int    `json:"id,omitempty"`
+	ID       int    `json:"id,omitempty"`
 	Username string `json:"username"`
 	Role     Role   `json:"role"`
 
@@ -58,14 +61,14 @@ func (u *User) DeriveKey(password string) []byte {
 }
 
 type Vault struct {
-	Id        int         `json:"id,omitempty"`
+	ID        int         `json:"id,omitempty"`
 	Name      string      `json:"name"`
 	OwnerId   int         `json:"ownerId,omitempty"`
 	Passwords []*Password `json:"passwords"`
 }
 
 type Password struct {
-	Id          int       `json:"id,omitempty"`
+	ID          int       `json:"id,omitempty"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
 	Password    string    `json:"password,omitempty"`
@@ -73,6 +76,14 @@ type Password struct {
 	UpdatedAt   time.Time `json:"updatedAt"`
 
 	passwordEncrypted []byte
+}
+
+type Device struct {
+	ID          int              `json:"id"`
+	IP          string           `json:"ip"`
+	Name        sql.Null[string] `json:"name"`
+	NetworkName sql.Null[string] `json:"networkName"`
+	MAC         sql.Null[string] `json:"mac"`
 }
 
 type Index struct {

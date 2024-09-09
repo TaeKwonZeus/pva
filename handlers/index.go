@@ -26,7 +26,7 @@ func (e *Env) GetIndexHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	index, err := e.Store.GetIndex(user.Id)
+	index, err := e.Store.GetIndex(user.ID)
 	if err != nil {
 		log.Error(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
@@ -38,13 +38,13 @@ func (e *Env) GetIndexHandler(w http.ResponseWriter, r *http.Request) {
 	for _, vault := range index.Vaults {
 		res = append(res, entry{
 			Title: vault.Name,
-			Url:   fmt.Sprintf("/passwords?vault=%d", vault.Id),
+			Url:   fmt.Sprintf("/passwords?vault=%d", vault.ID),
 			Type:  entryVault,
 		})
 		for _, password := range vault.Passwords {
 			res = append(res, entry{
 				Title: password.Name,
-				Url:   fmt.Sprintf("/passwords?vault=%d?password=%d", vault.Id, password.Id),
+				Url:   fmt.Sprintf("/passwords?vault=%d?password=%d", vault.ID, password.ID),
 				Type:  entryPassword,
 			})
 		}

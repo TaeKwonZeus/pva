@@ -100,7 +100,7 @@ func (s *Store) CreateVault(vault *Vault, owner *User) error {
 		return err
 	}
 
-	vault.OwnerId = owner.Id
+	vault.OwnerId = owner.ID
 	if err = s.db.createVault(vault, vaultKeyEncrypted); err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func (s *Store) CreateVault(vault *Vault, owner *User) error {
 		if err != nil {
 			return err
 		}
-		vaultKeys = append(vaultKeys, &vaultKey{userId: admin.Id, vaultId: vault.Id, keyEncrypted: vaultKeyEncrypted})
+		vaultKeys = append(vaultKeys, &vaultKey{userId: admin.ID, vaultId: vault.ID, keyEncrypted: vaultKeyEncrypted})
 	}
 	return s.db.createVaultKeys(vaultKeys...)
 }
@@ -146,7 +146,7 @@ func decryptVault(vnk *vaultAndKey, user *User, userKey []byte) (*Vault, error) 
 }
 
 func (s *Store) GetVault(id int, user *User, userKey []byte) (*Vault, error) {
-	vnk, err := s.db.getVault(id, user.Id)
+	vnk, err := s.db.getVault(id, user.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func (s *Store) GetVault(id int, user *User, userKey []byte) (*Vault, error) {
 }
 
 func (s *Store) GetVaults(user *User, userKey []byte) ([]*Vault, error) {
-	vnks, err := s.db.getVaults(user.Id)
+	vnks, err := s.db.getVaults(user.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +173,7 @@ func (s *Store) GetVaults(user *User, userKey []byte) ([]*Vault, error) {
 }
 
 func (s *Store) CheckVaultOwnership(vaultId int, user *User, userKey []byte) bool {
-	keyEncrypted, err := s.db.getVaultKey(vaultId, user.Id)
+	keyEncrypted, err := s.db.getVaultKey(vaultId, user.ID)
 	if err != nil {
 		return false
 	}
@@ -194,7 +194,7 @@ func (s *Store) DeleteVault(id int) error {
 }
 
 func (s *Store) getDecryptedVaultKey(vaultId int, user *User, userKey []byte) ([]byte, error) {
-	keyEncrypted, err := s.db.getVaultKey(vaultId, user.Id)
+	keyEncrypted, err := s.db.getVaultKey(vaultId, user.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +217,7 @@ func (s *Store) ShareVault(vaultId int, target *User, user *User, userKey []byte
 	}
 
 	return s.db.createVaultKeys(&vaultKey{
-		userId:       target.Id,
+		userId:       target.ID,
 		vaultId:      vaultId,
 		keyEncrypted: keyEncrypted,
 	})
@@ -227,7 +227,7 @@ func (s *Store) CreatePassword(password *Password, vaultId int, user *User, user
 	password.CreatedAt = time.Now()
 	password.UpdatedAt = time.Now()
 
-	vnk, err := s.db.getVault(vaultId, user.Id)
+	vnk, err := s.db.getVault(vaultId, user.ID)
 	if err != nil {
 		return err
 	}

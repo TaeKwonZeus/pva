@@ -1,7 +1,6 @@
 package network
 
 import (
-	"encoding/base64"
 	"errors"
 	"github.com/charmbracelet/log"
 	"golang.org/x/net/icmp"
@@ -117,7 +116,6 @@ func sendICMP(conn *icmp.PacketConn, ip net.IP) error {
 		},
 	}).Marshal(nil)
 
-	log.Debug("sending ICMP Echo", "ip", ip.String(), "msg", base64.StdEncoding.EncodeToString(msg))
 	_, err := conn.WriteTo(msg, &net.IPAddr{IP: ip})
 	return err
 }

@@ -68,7 +68,7 @@ func (e *Env) UpdateVaultHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	body.Id = id
+	body.ID = id
 
 	user, userKey, ok := authenticate(w, r, data.PermissionManagePasswords)
 	if !ok {
@@ -219,7 +219,7 @@ func (e *Env) UpdatePasswordHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	body.Id = passwordId
+	body.ID = passwordId
 
 	user, userKey, ok := authenticate(w, r, data.PermissionManagePasswords)
 	if !ok {
