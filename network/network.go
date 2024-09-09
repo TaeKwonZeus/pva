@@ -68,8 +68,8 @@ func Scan() (devices []Device, err error) {
 	}()
 
 	select {
-	case <-done:
-		return res.get(), nil
+	case err = <-done:
+		return res.get(), err
 	case <-time.After(Timeout):
 		log.Warn("ICMP timeout")
 		return res.get(), nil

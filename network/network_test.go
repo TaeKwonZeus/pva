@@ -11,5 +11,5 @@ func TestScan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(devices)
+	t.Log("devices:", devices)
 }
