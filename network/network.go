@@ -1,17 +1,20 @@
 package network
 
 import (
+	"encoding/base64"
 	"github.com/charmbracelet/log"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
+	"golang.org/x/sync/errgroup"
 	"net"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 var (
-	Timeout time.Duration
+	Timeout time.Duration = time.Second * 5
 )
 
 func GetOutboundIP() (ip net.IP, err error) {
@@ -36,23 +39,39 @@ func Scan() (devices []Device, err error) {
 	}
 	defer conn.Close()
 
+	var sent atomic.Int32
 	for _, ip := range localIPs() {
-		go sendICMP(conn, ip)
+		go func() {
+			err := sendICMP(conn, ip)
+			if err != nil {
+				log.Error("ICMP send error", "ip", ip, "err", err)
+				return
+			}
+			sent.Add(1)
+		}()
 	}
 
 	done := make(chan error)
 	res := newResults()
 
+	var eg errgroup.Group
+
+	n := sent.Load()
+	log.Debugf("sent %d echo packets", n)
+	for range n {
+		eg.Go(func() error {
+			return recvICMP(conn, res.c)
+		})
+	}
 	go func() {
-		for {
-			go recvICMP(conn, done, res.c)
-		}
+		done <- eg.Wait()
 	}()
 
 	select {
-	case err = <-done:
-		return nil, err
+	case <-done:
+		return res.get(), nil
 	case <-time.After(Timeout):
+		log.Warn("ICMP timeout")
 		return res.get(), nil
 	}
 }
@@ -65,7 +84,7 @@ func localIPs() []net.IP {
 	return ips
 }
 
-func sendICMP(conn *icmp.PacketConn, ip net.IP) {
+func sendICMP(conn *icmp.PacketConn, ip net.IP) error {
 	msg, _ := (&icmp.Message{
 		Type: ipv4.ICMPTypeEcho,
 		Code: 0,
@@ -76,20 +95,57 @@ func sendICMP(conn *icmp.PacketConn, ip net.IP) {
 		},
 	}).Marshal(nil)
 
-	if _, err := conn.WriteTo(msg, &net.IPAddr{IP: ip}); err != nil {
-		log.Error("send error", "ip", ip.String(), "err", err)
-	}
+	log.Debug("sending ICMP Echo", "ip", ip.String(), "msg", base64.StdEncoding.EncodeToString(msg))
+	_, err := conn.WriteTo(msg, &net.IPAddr{IP: ip})
+	return err
 }
 
-func recvICMP(conn *icmp.PacketConn, done chan<- error, res chan<- Device) {
-	rb := make([]byte, 1024)
+func recvICMP(conn *icmp.PacketConn, res chan<- Device) error {
+	rb := make([]byte, 1500)
 	n, peer, err := conn.ReadFrom(rb)
 	if err != nil {
-		done <- err
-		return
+		return err
 	}
 	peerIP := net.ParseIP(peer.String())
 
+	msg, err := icmp.ParseMessage(1, rb[:n])
+	if err != nil {
+		return err
+	}
+	_, ok := msg.Body.(*icmp.Echo)
+	if !ok {
+		switch b := msg.Body.(type) {
+		case *icmp.DstUnreach:
+			var dest string
+			switch msg.Code {
+			case 0:
+				dest = "network"
+			case 1:
+				dest = "host"
+			case 2:
+				dest = "protocol"
+			case 3:
+				dest = "port"
+			case 4:
+				dest = "must-fragment"
+			default:
+				dest = "dest"
+			}
+			log.Warn("ICMP unreachable", "dest", dest)
+		case *icmp.PacketTooBig:
+			log.Warn("ICMP packet too big", "mtu", b.MTU)
+		default:
+			log.Warn("ICMP non-echo response", "response", b)
+		}
+		return nil
+	}
+
+	res <- Device{
+		IP: peerIP,
+		// TODO find MAC and Name
+	}
+
+	return nil
 }
 
 type results struct {
