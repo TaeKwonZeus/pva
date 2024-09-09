@@ -5,10 +5,13 @@ import (
 	"github.com/charmbracelet/log"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
+	"golang.org/x/net/ipv6"
 	"golang.org/x/sync/errgroup"
 	"net"
 	"os"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -55,29 +58,37 @@ func Scan(opts ...Option) (devices []Device, err error) {
 		}
 	}
 
-	conn, err := icmp.ListenPacket("ip4:icmp", "0.0.0.0")
+	log.Debug("starting scan")
+
+	conn, err := icmp.ListenPacket("udp4", "0.0.0.0")
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
-	var sent int
+	var wg sync.WaitGroup
+	var sent atomic.Int32
 	for _, ip := range localIPs() {
-		err := sendICMP(conn, ip)
-		if err != nil {
-			log.Error("ICMP send error", "ip", ip, "err", err)
-			continue
-		}
-		sent++
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := sendICMP(conn, ip); err != nil {
+				log.Error("ICMP send error", "ip", ip, "err", err)
+				return
+			}
+			sent.Add(1)
+		}()
 	}
+	wg.Wait()
 
 	done := make(chan error)
 	res := newResults()
 
 	var eg errgroup.Group
 
-	log.Debugf("sent %d echo packets", sent)
-	for range sent {
+	n := sent.Load()
+	log.Debugf("sent %d echo packets", n)
+	for range n {
 		eg.Go(func() error {
 			return recvICMP(conn, res.c)
 		})
@@ -91,7 +102,7 @@ func Scan(opts ...Option) (devices []Device, err error) {
 		close(res.c)
 		return res.get(), err
 	case <-time.After(opt.timeout):
-		log.Warn("ICMP timeout")
+		log.Debug("ICMP timeout")
 		close(res.c)
 		return res.get(), nil
 	}
@@ -100,7 +111,7 @@ func Scan(opts ...Option) (devices []Device, err error) {
 func localIPs() []net.IP {
 	var ips []net.IP
 	for i := byte(1); i < 255; i++ {
-		ips = append(ips, net.IPv4(192, 168, 0, i))
+		ips = append(ips, net.IPv4(192, 168, 0, i) /* net.IPv4(192, 168, 1, i) */)
 	}
 	return ips
 }
@@ -116,7 +127,7 @@ func sendICMP(conn *icmp.PacketConn, ip net.IP) error {
 		},
 	}).Marshal(nil)
 
-	_, err := conn.WriteTo(msg, &net.IPAddr{IP: ip})
+	_, err := conn.WriteTo(msg, &net.UDPAddr{IP: ip})
 	return err
 }
 
@@ -126,11 +137,16 @@ func recvICMP(conn *icmp.PacketConn, res chan<- Device) error {
 	if err != nil {
 		return err
 	}
-	peerIP := net.ParseIP(peer.String())
+	peerIP := net.ParseIP(strings.TrimSuffix(peer.String(), ":0"))
 
 	msg, err := icmp.ParseMessage(1, rb[:n])
 	if err != nil {
 		return err
+	}
+
+	if msg.Type != ipv4.ICMPTypeEchoReply && msg.Type != ipv6.ICMPTypeEchoReply {
+		log.Debug("non-echo response", "ip", peerIP, "msg", msg)
+		return nil
 	}
 	_, ok := msg.Body.(*icmp.Echo)
 	if !ok {
@@ -155,11 +171,12 @@ func recvICMP(conn *icmp.PacketConn, res chan<- Device) error {
 		case *icmp.PacketTooBig:
 			log.Warn("ICMP packet too big", "mtu", b.MTU, "ip", peerIP.String())
 		default:
-			log.Warn("ICMP non-echo response", "response", b, "ip", peerIP.String())
+			log.Warn("ICMP non-echo response", "msg", msg, "ip", peerIP.String())
 		}
 		return nil
 	}
 
+	log.Debug("echo response", "ip", peerIP, "msg", *msg)
 	res <- Device{
 		IP: peerIP,
 		// TODO find MAC and Name
@@ -170,13 +187,13 @@ func recvICMP(conn *icmp.PacketConn, res chan<- Device) error {
 
 type results struct {
 	devices map[string]Device
-	mu      sync.RWMutex
+	mu      sync.Mutex
 	c       chan<- Device
 }
 
 func (r *results) get() []Device {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	devices := make([]Device, 0, len(r.devices))
 	for _, d := range r.devices {
@@ -195,16 +212,12 @@ func newResults() *results {
 		for device := range c {
 			ip := device.IP.String()
 
-			r.mu.RLock()
-			if _, ok := r.devices[ip]; ok {
-				log.Info("ICMP double receive", "ip", ip)
-				r.mu.RUnlock()
-				continue
-			}
-			r.mu.RUnlock()
-
 			r.mu.Lock()
-			r.devices[ip] = device
+			if _, ok := r.devices[ip]; ok {
+				log.Debug("ICMP double receive", "ip", ip)
+			} else {
+				r.devices[ip] = device
+			}
 			r.mu.Unlock()
 		}
 	}()
