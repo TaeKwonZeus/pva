@@ -2,6 +2,7 @@ package data
 
 import (
 	"database/sql"
+	"github.com/TaeKwonZeus/pva/network"
 	"time"
 )
 
@@ -271,4 +272,35 @@ func (s *Store) UpdatePassword(password *Password, vaultId int, user *User, user
 
 func (s *Store) DeletePassword(id int) error {
 	return s.db.deletePassword(id)
+}
+
+func (s *Store) GetDevices() ([]Device, error) {
+	scan, err := network.Scan()
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]Device, len(scan))
+	for i, dev := range scan {
+		newDevice := Device{
+			IP:   dev.IP.String(),
+			Name: dev.Name,
+			MAC:  dev.MAC.String(),
+		}
+
+		d, err := s.db.getDevice(dev.IP)
+		if IsErrNotFound(err) {
+			out[i] = newDevice
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		newDevice.Name = d.Name
+		newDevice.Description = d.Description
+		out[i] = newDevice
+	}
+
+	return out, nil
 }

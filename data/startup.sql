@@ -46,7 +46,6 @@ CREATE TABLE IF NOT EXISTS devices
 (
     id           INTEGER PRIMARY KEY,
     ip           TEXT UNIQUE NOT NULL,
-    mac          TEXT,
-    network_name TEXT,
-    name         TEXT
+    name         TEXT NOT NULL,
+    description  TEXT NOT NULL,
 );

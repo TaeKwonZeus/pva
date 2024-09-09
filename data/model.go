@@ -1,7 +1,6 @@
 package data
 
 import (
-	"database/sql"
 	"log"
 	"slices"
 	"time"
@@ -79,11 +78,12 @@ type Password struct {
 }
 
 type Device struct {
-	ID          int              `json:"id"`
-	IP          string           `json:"ip"`
-	Name        sql.Null[string] `json:"name"`
-	NetworkName sql.Null[string] `json:"networkName"`
-	MAC         sql.Null[string] `json:"mac"`
+	ID          int    `json:"id"`
+	IP          string `json:"ip"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	NetworkName string `json:"networkName"`
+	MAC         string `json:"mac"`
 }
 
 type Index struct {
