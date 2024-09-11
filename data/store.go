@@ -274,33 +274,40 @@ func (s *Store) DeletePassword(id int) error {
 	return s.db.deletePassword(id)
 }
 
-func (s *Store) GetDevices() ([]Device, error) {
+func (s *Store) GetDevices() (devices []*Device, err error) {
+	devices, err = s.db.getDevices()
+	if err != nil {
+		return
+	}
+	deviceMap := make(map[string]*Device)
+	for _, device := range devices {
+		deviceMap[device.IP] = device
+	}
+
 	scan, err := network.Scan()
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]Device, len(scan))
-	for i, dev := range scan {
-		newDevice := Device{
-			IP:   dev.IP.String(),
-			Name: dev.Name,
-			MAC:  dev.MAC.String(),
+	// Add connected devices to the response, whether they're saved or not.
+	// If they are saved but not connected, Connected will equal false.
+	// If they are connected but not saved, ID will equal 0.
+	for _, device := range scan {
+		// Entry is a pointer to the entry in the slice so we can just edit it
+		entry, ok := deviceMap[device.IP.String()]
+		if ok {
+			entry.NetworkName = device.Name
+			entry.MAC = device.MAC.String()
+			entry.Connected = true
+		} else {
+			devices = append(devices, &Device{
+				IP:          device.IP.String(),
+				NetworkName: device.Name,
+				MAC:         device.MAC.String(),
+				Connected:   true,
+			})
 		}
-
-		d, err := s.db.getDevice(dev.IP)
-		if IsErrNotFound(err) {
-			out[i] = newDevice
-			continue
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		newDevice.Name = d.Name
-		newDevice.Description = d.Description
-		out[i] = newDevice
 	}
 
-	return out, nil
+	return
 }

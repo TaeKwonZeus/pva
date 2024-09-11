@@ -86,6 +86,10 @@ func newRouter(env *handlers.Env) http.Handler {
 			r.Patch("/{vaultId}/{passwordId}", env.UpdatePasswordHandler)
 			r.Delete("/{vaultId}/{passwordId}", env.DeletePasswordHandler)
 		})
+
+		r.Route("/devices", func(r chi.Router) {
+			r.Get("/", env.GetDevicesHandler)
+		})
 	})
 
 	r.Route("/", func(r chi.Router) {

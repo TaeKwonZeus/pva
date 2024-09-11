@@ -84,6 +84,7 @@ type Device struct {
 	Description string `json:"description"`
 	NetworkName string `json:"networkName"`
 	MAC         string `json:"mac"`
+	Connected   bool   `json:"connected"`
 }
 
 type Index struct {

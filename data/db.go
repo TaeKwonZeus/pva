@@ -7,7 +7,6 @@ import (
 	"errors"
 	"github.com/mattn/go-sqlite3"
 	"log"
-	"net"
 	"time"
 )
 
@@ -409,8 +408,22 @@ func (d *db) deletePassword(id int) error {
 	return err
 }
 
-func (d *db) getDevice(ip net.IP) (device Device, err error) {
-	row := d.pool.QueryRow("SELECT id, name, description FROM devices WHERE ip=?", ip.String())
-	err = row.Scan(&device.ID, &device.Name, &device.Description)
+func (d *db) getDevices() (devices []*Device, err error) {
+	rows, err := d.pool.Query("SELECT id, name, description FROM devices")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var device Device
+		if err = rows.Scan(&device.ID, &device.Name, &device.Description); err != nil {
+			return nil, err
+		}
+		devices = append(devices, &device)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
 	return
 }

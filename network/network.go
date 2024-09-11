@@ -1,6 +1,7 @@
 package network
 
 import (
+	"encoding/binary"
 	"errors"
 	"github.com/charmbracelet/log"
 	"golang.org/x/net/icmp"
@@ -32,10 +33,12 @@ type Device struct {
 
 type options struct {
 	timeout time.Duration
+	mask    net.IPMask
 }
 
 var defaultOptions = options{
 	timeout: time.Second * 3,
+	mask:    net.IPv4Mask(255, 255, 255, 0),
 }
 
 type Option func(*options) error
@@ -50,12 +53,24 @@ func WithTimeout(timeout time.Duration) Option {
 	}
 }
 
+func WithMask(mask net.IPMask) Option {
+	return func(o *options) error {
+		o.mask = mask
+		return nil
+	}
+}
+
 func Scan(opts ...Option) (devices []Device, err error) {
 	opt := defaultOptions
 	for _, o := range opts {
 		if err = o(&opt); err != nil {
 			return nil, err
 		}
+	}
+
+	hostIP, err := GetOutboundIP()
+	if err != nil {
+		return nil, err
 	}
 
 	log.Debug("starting scan")
@@ -68,7 +83,7 @@ func Scan(opts ...Option) (devices []Device, err error) {
 
 	var wg sync.WaitGroup
 	var sent atomic.Int32
-	for _, ip := range localIPs() {
+	for _, ip := range localIPs(hostIP, opt.mask) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -108,10 +123,17 @@ func Scan(opts ...Option) (devices []Device, err error) {
 	}
 }
 
-func localIPs() []net.IP {
+func localIPs(hostIP net.IP, mask net.IPMask) []net.IP {
+	host := binary.BigEndian.Uint32(hostIP)
+	netmask := binary.BigEndian.Uint32(mask)
+	networkAddr := host & netmask
+	broadcastAddr := networkAddr | ^netmask
+
 	var ips []net.IP
-	for i := byte(1); i < 255; i++ {
-		ips = append(ips, net.IPv4(192, 168, 0, i) /* net.IPv4(192, 168, 1, i) */)
+	for i := networkAddr + 1; i < broadcastAddr; i++ {
+		var ip net.IP = make([]byte, 4)
+		binary.BigEndian.PutUint32(ip, i)
+		ips = append(ips, ip)
 	}
 	return ips
 }
