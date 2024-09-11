@@ -47,5 +47,5 @@ CREATE TABLE IF NOT EXISTS devices
     id           INTEGER PRIMARY KEY,
     ip           TEXT UNIQUE NOT NULL,
     name         TEXT NOT NULL,
-    description  TEXT NOT NULL,
+    description  TEXT NOT NULL
 );

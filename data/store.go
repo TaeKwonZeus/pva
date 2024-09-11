@@ -284,7 +284,7 @@ func (s *Store) GetDevices() (devices []*Device, err error) {
 		deviceMap[device.IP] = device
 	}
 
-	scan, err := network.Scan()
+	scan, err := network.Devices()
 	if err != nil {
 		return nil, err
 	}

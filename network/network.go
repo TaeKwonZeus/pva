@@ -6,9 +6,9 @@ import (
 	"github.com/charmbracelet/log"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
-	"golang.org/x/net/ipv6"
 	"golang.org/x/sync/errgroup"
 	"net"
+	"net/netip"
 	"os"
 	"strings"
 	"sync"
@@ -16,17 +16,22 @@ import (
 	"time"
 )
 
-func GetOutboundIP() (ip net.IP, err error) {
-	conn, err := net.Dial("udp", "8.8.8.8:80")
-	if err != nil {
-		return nil, err
-	}
-	ip = conn.LocalAddr().(*net.UDPAddr).IP
-	return
+var outboundIP netip.Addr
+
+func OutboundIP() (netip.Addr, error) {
+	err := sync.OnceValue(func() error {
+		conn, err := net.Dial("udp", "8.8.8.8:80")
+		if err != nil {
+			return err
+		}
+		outboundIP, _ = netip.AddrFromSlice(conn.LocalAddr().(*net.UDPAddr).IP)
+		return nil
+	})()
+	return outboundIP, err
 }
 
 type Device struct {
-	IP   net.IP
+	IP   netip.Addr
 	Name string
 	MAC  net.HardwareAddr
 }
@@ -37,7 +42,7 @@ type options struct {
 }
 
 var defaultOptions = options{
-	timeout: time.Second * 3,
+	timeout: time.Second * 1,
 	mask:    net.IPv4Mask(255, 255, 255, 0),
 }
 
@@ -60,6 +65,35 @@ func WithMask(mask net.IPMask) Option {
 	}
 }
 
+var cachedResult []Device
+
+func StartAutoDiscovery(interval time.Duration, opts ...Option) {
+	go func() {
+		timer := time.NewTicker(interval)
+		defer timer.Stop()
+
+		var err error
+		for range timer.C {
+			cachedResult = nil
+
+			cachedResult, err = Scan(opts...)
+			if err != nil {
+				log.Error("scanning error", "err", err.Error())
+			} else {
+				log.Debug("auto device scan complete")
+			}
+		}
+	}()
+	log.Info("auto device discovery started")
+}
+
+func Devices() ([]Device, error) {
+	if cachedResult != nil {
+		return cachedResult, nil
+	}
+	return Scan()
+}
+
 func Scan(opts ...Option) (devices []Device, err error) {
 	opt := defaultOptions
 	for _, o := range opts {
@@ -68,7 +102,7 @@ func Scan(opts ...Option) (devices []Device, err error) {
 		}
 	}
 
-	hostIP, err := GetOutboundIP()
+	hostIP, err := OutboundIP()
 	if err != nil {
 		return nil, err
 	}
@@ -88,21 +122,22 @@ func Scan(opts ...Option) (devices []Device, err error) {
 		go func() {
 			defer wg.Done()
 			if err := sendICMP(conn, ip); err != nil {
-				log.Error("ICMP send error", "ip", ip, "err", err)
+				log.Warn("ICMP send error", "ip", ip, "err", err)
 				return
 			}
+			log.Debug("sent packet", "ip", ip)
 			sent.Add(1)
 		}()
 	}
 	wg.Wait()
 
-	done := make(chan error)
-	res := newResults()
-
-	var eg errgroup.Group
-
 	n := sent.Load()
 	log.Debugf("sent %d echo packets", n)
+
+	done := make(chan error)
+	res := newResults()
+	var eg errgroup.Group
+
 	for range n {
 		eg.Go(func() error {
 			return recvICMP(conn, res.c)
@@ -123,33 +158,33 @@ func Scan(opts ...Option) (devices []Device, err error) {
 	}
 }
 
-func localIPs(hostIP net.IP, mask net.IPMask) []net.IP {
-	host := binary.BigEndian.Uint32(hostIP)
+func localIPs(hostIP netip.Addr, mask net.IPMask) []netip.Addr {
+	host := binary.BigEndian.Uint32(hostIP.AsSlice())
 	netmask := binary.BigEndian.Uint32(mask)
 	networkAddr := host & netmask
 	broadcastAddr := networkAddr | ^netmask
 
-	var ips []net.IP
-	for i := networkAddr + 1; i < broadcastAddr; i++ {
-		var ip net.IP = make([]byte, 4)
-		binary.BigEndian.PutUint32(ip, i)
-		ips = append(ips, ip)
+	var ips []netip.Addr
+	for i := networkAddr + 1; i <= broadcastAddr; i++ {
+		var ip [4]byte
+		binary.BigEndian.PutUint32(ip[:], i)
+		ips = append(ips, netip.AddrFrom4(ip))
 	}
 	return ips
 }
 
-func sendICMP(conn *icmp.PacketConn, ip net.IP) error {
+func sendICMP(conn *icmp.PacketConn, ip netip.Addr) error {
 	msg, _ := (&icmp.Message{
 		Type: ipv4.ICMPTypeEcho,
 		Code: 0,
 		Body: &icmp.Echo{
 			ID:   os.Getpid() & 0xffff,
 			Seq:  1,
-			Data: []byte("ping"),
+			Data: nil,
 		},
 	}).Marshal(nil)
 
-	_, err := conn.WriteTo(msg, &net.UDPAddr{IP: ip})
+	_, err := conn.WriteTo(msg, &net.UDPAddr{IP: ip.AsSlice()})
 	return err
 }
 
@@ -159,17 +194,16 @@ func recvICMP(conn *icmp.PacketConn, res chan<- Device) error {
 	if err != nil {
 		return err
 	}
-	peerIP := net.ParseIP(strings.TrimSuffix(peer.String(), ":0"))
+	peerIP, err := netip.ParseAddr(strings.TrimSuffix(peer.String(), ":0"))
+	if err != nil {
+		return err
+	}
 
 	msg, err := icmp.ParseMessage(1, rb[:n])
 	if err != nil {
 		return err
 	}
 
-	if msg.Type != ipv4.ICMPTypeEchoReply && msg.Type != ipv6.ICMPTypeEchoReply {
-		log.Debug("non-echo response", "ip", peerIP, "msg", msg)
-		return nil
-	}
 	_, ok := msg.Body.(*icmp.Echo)
 	if !ok {
 		switch b := msg.Body.(type) {
@@ -208,7 +242,7 @@ func recvICMP(conn *icmp.PacketConn, res chan<- Device) error {
 }
 
 type results struct {
-	devices map[string]Device
+	devices map[netip.Addr]Device
 	mu      sync.Mutex
 	c       chan<- Device
 }
@@ -227,18 +261,16 @@ func (r *results) get() []Device {
 func newResults() *results {
 	c := make(chan Device)
 	r := &results{
-		devices: make(map[string]Device),
+		devices: make(map[netip.Addr]Device),
 		c:       c,
 	}
 	go func() {
 		for device := range c {
-			ip := device.IP.String()
-
 			r.mu.Lock()
-			if _, ok := r.devices[ip]; ok {
-				log.Debug("ICMP double receive", "ip", ip)
+			if _, ok := r.devices[device.IP]; ok {
+				log.Debug("ICMP double receive", "ip", device.IP)
 			} else {
-				r.devices[ip] = device
+				r.devices[device.IP] = device
 			}
 			r.mu.Unlock()
 		}

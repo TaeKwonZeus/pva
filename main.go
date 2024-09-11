@@ -11,6 +11,7 @@ import (
 	stdlog "log"
 	"net/http"
 	"path"
+	"time"
 
 	"github.com/TaeKwonZeus/pva/config"
 )
@@ -45,22 +46,24 @@ func main() {
 
 	keys, err := data.NewKeys()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("error creating keys", "err", err)
 	}
 	defer keys.Erase()
 
 	store, err := data.NewStore(path.Join(directory, dbFilename), keys.PasswordKey())
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("error setting up store", "err", err)
 	}
 	defer store.Close()
 
 	env := &handlers.Env{Store: store, Keys: keys}
 
-	ip, err := network.GetOutboundIP()
+	ip, err := network.OutboundIP()
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	network.StartAutoDiscovery(time.Minute * 2)
 
 	log.Infof("starting server on https://%s:%d", ip, cfg.Port)
 	err = http.ListenAndServeTLS(
