@@ -29,70 +29,73 @@ func (j jwtClaims) Valid() error {
 
 // AuthMiddleware verifies the JWT token, fetches the calling user from e.db, decrypts password in JWT and stores
 // the user and the password in r.Context().
-func (e *Env) AuthMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tokenCookie, err := r.Cookie("token")
-		if err != nil || tokenCookie.Value == "" {
-			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-			return
-		}
-		token := tokenCookie.Value
+func (e *Env) AuthMiddleware(decrypt bool) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			tokenCookie, err := r.Cookie("token")
+			if err != nil || tokenCookie.Value == "" {
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+				return
+			}
+			token := tokenCookie.Value
 
-		t, err := jwt.ParseWithClaims(token, new(jwtClaims), func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			t, err := jwt.ParseWithClaims(token, new(jwtClaims), func(token *jwt.Token) (interface{}, error) {
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+				}
+
+				return e.Keys.SigningKey(), nil
+			})
+			if err != nil {
+				log.Warn(err.Error(), "token", token)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
 			}
 
-			return e.Keys.SigningKey(), nil
+			claims, ok := t.Claims.(*jwtClaims)
+			if !t.Valid || !ok {
+				http.Error(w, "invalid token", http.StatusUnauthorized)
+				return
+			}
+			id, err := strconv.Atoi(claims.Subject)
+			if err != nil {
+				http.Error(w, "failed to parse sub", http.StatusUnauthorized)
+				return
+			}
+
+			user, err := e.Store.GetUser(id)
+			if err != nil {
+				http.Error(w, "failed to get user", http.StatusUnauthorized)
+				return
+			}
+			if user == nil {
+				http.Error(w, "user not found", http.StatusUnauthorized)
+				return
+			}
+
+			ctx := context.WithValue(r.Context(), "user", user)
+
+			if decrypt {
+				passwdBytes, err := base64.StdEncoding.DecodeString(claims.Passwd)
+				if err != nil {
+					log.Error("failed to decode", "passwd", claims.Passwd)
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+				password, err := e.Store.DecryptPassword(passwdBytes)
+				if err != nil {
+					log.Warn("failed to decrypt", "passwd", claims.Passwd)
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+				userKey := user.DeriveKey(password)
+				ctx = context.WithValue(ctx, "userKey", userKey)
+			}
+
+			r = r.WithContext(ctx)
+			next.ServeHTTP(w, r)
 		})
-		if err != nil {
-			log.Warn(err.Error(), "token", token)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		claims, ok := t.Claims.(*jwtClaims)
-		if !t.Valid || !ok {
-			http.Error(w, "invalid token", http.StatusUnauthorized)
-			return
-		}
-		id, err := strconv.Atoi(claims.Subject)
-		if err != nil {
-			http.Error(w, "failed to parse sub", http.StatusUnauthorized)
-			return
-		}
-
-		user, err := e.Store.GetUser(id)
-		if err != nil {
-			http.Error(w, "failed to get user", http.StatusUnauthorized)
-			return
-		}
-		if user == nil {
-			http.Error(w, "user not found", http.StatusUnauthorized)
-			return
-		}
-
-		passwdBytes, err := base64.StdEncoding.DecodeString(claims.Passwd)
-		if err != nil {
-			log.Error("failed to decode", "passwd", claims.Passwd)
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
-		password, err := e.Store.DecryptPassword(passwdBytes)
-		if err != nil {
-			log.Warn("failed to decrypt", "passwd", claims.Passwd)
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		userKey := user.DeriveKey(password)
-
-		ctx := context.WithValue(r.Context(), "user", user)
-		ctx = context.WithValue(ctx, "userKey", userKey)
-		r = r.WithContext(ctx)
-
-		next.ServeHTTP(w, r)
-	})
+	}
 }
 
 type credentials struct {
@@ -227,4 +230,20 @@ func authenticate(w http.ResponseWriter, r *http.Request, permission data.Permis
 		return nil, nil, false
 	}
 	return user, userKey, true
+}
+
+func authenticateNoKey(w http.ResponseWriter, r *http.Request, permission data.Permission) (user *data.User, ok bool) {
+	user, ok = r.Context().Value("user").(*data.User)
+	if !ok {
+		log.Error("could not get user from context")
+		w.WriteHeader(http.StatusInternalServerError)
+		return nil, false
+	}
+
+	if permission >= 0 && !data.CheckPermission(user.Role, permission) {
+		w.WriteHeader(http.StatusForbidden)
+		return nil, false
+	}
+
+	return user, true
 }

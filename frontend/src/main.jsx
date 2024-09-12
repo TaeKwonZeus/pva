@@ -12,6 +12,7 @@ import { Theme } from "@radix-ui/themes";
 import { isLoggedIn } from "./auth.js";
 import Auth from "./pages/Auth.jsx";
 import Passwords from "./pages/Passwords.jsx";
+import Devices from "./pages/Devices.jsx";
 
 async function authLoader() {
   return (await isLoggedIn()) ? null : redirect("/auth");
@@ -29,6 +30,10 @@ const router = createBrowserRouter([
           {
             path: "/passwords",
             element: <Passwords />,
+          },
+          {
+            path: "/devices",
+            element: <Devices />,
           },
         ],
       },

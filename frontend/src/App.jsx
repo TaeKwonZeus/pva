@@ -12,7 +12,7 @@ import {
 } from "@radix-ui/themes";
 import {
   ArchiveIcon,
-  FileIcon,
+  DesktopIcon,
   HomeIcon,
   LockClosedIcon,
   MagnifyingGlassIcon,
@@ -117,9 +117,9 @@ function App() {
       icon: <LockClosedIcon />,
     },
     {
-      href: "/",
-      label: "Documents",
-      icon: <FileIcon />,
+      href: "/devices",
+      label: "Devices",
+      icon: <DesktopIcon />,
     },
   ];
 

@@ -46,7 +46,7 @@ function CreateVaultDialog() {
   return (
     <Dialog.Root>
       <Dialog.Trigger>
-        <Button style={{ width: "200px" }} mb="3">
+        <Button style={{ width: "200px" }}>
           <PlusIcon /> New Vault
         </Button>
       </Dialog.Trigger>
@@ -110,7 +110,7 @@ function EditPasswordDialog({ vaultId, passwordId }) {
   return (
     <Dialog.Root>
       <Dialog.Trigger>
-        <IconButton title="Edit this password" variant="soft">
+        <IconButton size="1" title="Edit this password" variant="soft">
           <Pencil1Icon />
         </IconButton>
       </Dialog.Trigger>
@@ -149,10 +149,11 @@ function EditPasswordDialog({ vaultId, passwordId }) {
             >
               <TextField.Slot>
                 <IconButton
+                  size="1"
                   variant="ghost"
                   onClick={() => setVisible(!visible)}
                 >
-                  {visible ? <EyeOpenIcon /> : <EyeClosedIcon />}
+                  {!visible ? <EyeOpenIcon /> : <EyeClosedIcon />}
                 </IconButton>
               </TextField.Slot>
             </TextField.Root>
@@ -195,7 +196,7 @@ function DeletePasswordDialog({ vaultId, passwordId }) {
   return (
     <AlertDialog.Root>
       <AlertDialog.Trigger>
-        <IconButton color="red" title="Delete this password">
+        <IconButton size="1" color="red" title="Delete this password">
           <TrashIcon />
         </IconButton>
       </AlertDialog.Trigger>
@@ -234,6 +235,7 @@ function Password({ password, vaultId, ...otherProps }) {
           <Box width="200px">{password.description}</Box>
           <Flex gap="2">
             <IconButton
+              size="1"
               variant="surface"
               onClick={() => navigator.clipboard.writeText(password.password)}
               title="Copy to clipboard"
@@ -281,7 +283,7 @@ function CreatePasswordDialog({ vaultId }) {
   return (
     <Dialog.Root>
       <Dialog.Trigger>
-        <IconButton title="Add a new password">
+        <IconButton size="1" title="Add a new password">
           <PlusIcon />
         </IconButton>
       </Dialog.Trigger>
@@ -318,10 +320,11 @@ function CreatePasswordDialog({ vaultId }) {
             >
               <TextField.Slot>
                 <IconButton
+                  size="1"
                   variant="ghost"
                   onClick={() => setVisible(!visible)}
                 >
-                  {visible ? <EyeOpenIcon /> : <EyeClosedIcon />}
+                  {!visible ? <EyeOpenIcon /> : <EyeClosedIcon />}
                 </IconButton>
               </TextField.Slot>
             </TextField.Root>
@@ -368,7 +371,7 @@ function EditVaultDialog({ vaultId }) {
   return (
     <Dialog.Root>
       <Dialog.Trigger>
-        <IconButton variant="soft" title="Edit this vault">
+        <IconButton size="1" variant="soft" title="Edit this vault">
           <Pencil1Icon />
         </IconButton>
       </Dialog.Trigger>
@@ -422,7 +425,7 @@ function DeleteVaultDialog({ vaultId }) {
   return (
     <AlertDialog.Root>
       <AlertDialog.Trigger>
-        <IconButton color="red" title="Delete this vault">
+        <IconButton size="1" color="red" title="Delete this vault">
           <TrashIcon />
         </IconButton>
       </AlertDialog.Trigger>
@@ -471,7 +474,7 @@ function ShareVaultDialog({ vaultId }) {
   return (
     <Dialog.Root>
       <Dialog.Trigger>
-        <IconButton title="Share this vault" variant="surface">
+        <IconButton size="1" title="Share this vault" variant="surface">
           <Share1Icon />
         </IconButton>
       </Dialog.Trigger>
@@ -514,7 +517,11 @@ function Vault({ vault, ...otherProps }) {
   return (
     <>
       <Flex align="center" gap="4" {...otherProps}>
-        <IconButton variant="ghost" onClick={() => setIsExpanded(!isExpanded)}>
+        <IconButton
+          size="1"
+          variant="ghost"
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
           {isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
         </IconButton>
         <Box width="200px">{vault.name}</Box>
@@ -546,7 +553,7 @@ function Passwords() {
   }, []);
 
   return (
-    <Flex direction="column" gap="3" width="800px">
+    <Flex direction="column" gap="3">
       <CreateVaultDialog />
 
       {vaults.length > 0 ? (

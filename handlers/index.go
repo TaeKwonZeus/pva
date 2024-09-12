@@ -21,7 +21,7 @@ type entry struct {
 }
 
 func (e *Env) GetIndexHandler(w http.ResponseWriter, r *http.Request) {
-	user, _, ok := authenticate(w, r, -1)
+	user, ok := authenticateNoKey(w, r, -1)
 	if !ok {
 		return
 	}

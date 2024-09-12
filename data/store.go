@@ -274,6 +274,10 @@ func (s *Store) DeletePassword(id int) error {
 	return s.db.deletePassword(id)
 }
 
+func (s *Store) CreateDevice(device *Device) error {
+	return s.db.createDevice(device)
+}
+
 func (s *Store) GetDevices() (devices []*Device, err error) {
 	devices, err = s.db.getDevices()
 	if err != nil {
@@ -296,18 +300,26 @@ func (s *Store) GetDevices() (devices []*Device, err error) {
 		// Entry is a pointer to the entry in the slice so we can just edit it
 		entry, ok := deviceMap[device.IP.String()]
 		if ok {
-			entry.NetworkName = device.Name
-			entry.MAC = device.MAC.String()
+			//entry.NetworkName = device.Name
+			//entry.MAC = device.MAC.String()
 			entry.Connected = true
 		} else {
 			devices = append(devices, &Device{
-				IP:          device.IP.String(),
-				NetworkName: device.Name,
-				MAC:         device.MAC.String(),
-				Connected:   true,
+				IP: device.IP.String(),
+				//NetworkName: device.Name,
+				//MAC:         device.MAC.String(),
+				Connected: true,
 			})
 		}
 	}
 
 	return
+}
+
+func (s *Store) UpdateDevice(device *Device) error {
+	return s.db.updateDevice(device)
+}
+
+func (s *Store) DeleteDevice(id int) error {
+	return s.db.deleteDevice(id)
 }

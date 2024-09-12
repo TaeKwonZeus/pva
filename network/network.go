@@ -67,15 +67,22 @@ func WithMask(mask net.IPMask) Option {
 
 var cachedResult []Device
 
+func instantTick(interval time.Duration) <-chan time.Time {
+	c := make(chan time.Time)
+	go func() {
+		c <- time.Now()
+		for t := range time.Tick(interval) {
+			c <- t
+		}
+		close(c)
+	}()
+	return c
+}
+
 func StartAutoDiscovery(interval time.Duration, opts ...Option) {
 	go func() {
-		timer := time.NewTicker(interval)
-		defer timer.Stop()
-
 		var err error
-		for range timer.C {
-			cachedResult = nil
-
+		for range instantTick(interval) {
 			cachedResult, err = Scan(opts...)
 			if err != nil {
 				log.Error("scanning error", "err", err.Error())
@@ -122,7 +129,7 @@ func Scan(opts ...Option) (devices []Device, err error) {
 		go func() {
 			defer wg.Done()
 			if err := sendICMP(conn, ip); err != nil {
-				log.Warn("ICMP send error", "ip", ip, "err", err)
+				log.Debug("ICMP send error", "ip", ip, "err", err)
 				return
 			}
 			log.Debug("sent packet", "ip", ip)

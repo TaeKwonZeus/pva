@@ -408,8 +408,14 @@ func (d *db) deletePassword(id int) error {
 	return err
 }
 
+func (d *db) createDevice(device *Device) error {
+	_, err := d.pool.Exec("INSERT INTO devices (ip, name, description) VALUES (?, ?, ?)",
+		device.IP, device.Name, device.Description)
+	return err
+}
+
 func (d *db) getDevices() (devices []*Device, err error) {
-	rows, err := d.pool.Query("SELECT id, name, description FROM devices")
+	rows, err := d.pool.Query("SELECT id, ip, name, description FROM devices")
 	if err != nil {
 		return nil, err
 	}
@@ -417,7 +423,7 @@ func (d *db) getDevices() (devices []*Device, err error) {
 
 	for rows.Next() {
 		var device Device
-		if err = rows.Scan(&device.ID, &device.Name, &device.Description); err != nil {
+		if err = rows.Scan(&device.ID, &device.IP, &device.Name, &device.Description); err != nil {
 			return nil, err
 		}
 		devices = append(devices, &device)
@@ -426,4 +432,14 @@ func (d *db) getDevices() (devices []*Device, err error) {
 		return nil, err
 	}
 	return
+}
+
+func (d *db) updateDevice(device *Device) error {
+	_, err := d.pool.Exec("UPDATE devices SET ip=?, name=?, description=? WHERE id=?", device.IP, device.Name, device.Description, device.ID)
+	return err
+}
+
+func (d *db) deleteDevice(id int) error {
+	_, err := d.pool.Exec("DELETE FROM devices WHERE id=?", id)
+	return err
 }
