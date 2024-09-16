@@ -18,6 +18,26 @@ import grayCircle from "../assets/gray-circle.png";
 import { Pencil1Icon, PlusIcon, TrashIcon } from "@radix-ui/react-icons";
 
 function CreateDeviceDialog() {
+  const [ip, setIp] = useState("");
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+
+  async function confirm() {
+    const res = await fetch("/api/devices", {
+      method: "POST",
+      body: JSON.stringify({
+        ip,
+        name,
+        description,
+      }),
+    });
+    if (!res.ok) {
+      alert(res.statusText + " " + (await res.text()));
+      return;
+    }
+    window.location.reload();
+  }
+
   return (
     <Dialog.Root>
       <Dialog.Trigger>
@@ -28,12 +48,80 @@ function CreateDeviceDialog() {
           <PlusIcon /> New Device
         </Button>
       </Dialog.Trigger>
-      <Dialog.Content></Dialog.Content>
+      <Dialog.Content>
+        <Dialog.Title>Update device</Dialog.Title>
+        <Dialog.Description>Make changes to this device.</Dialog.Description>
+        <Flex direction="column" gap="3">
+          <label>
+            <Text as="div" size="2" mb="1" weight="bold">
+              IP
+            </Text>
+            <TextField.Root
+              defaultValue={ip}
+              onChange={(e) => setIp(e.target.value.trim())}
+              placeholder="IP goes here"
+            />
+          </label>
+          <label>
+            <Text as="div" size="2" mb="1" weight="bold">
+              Name
+            </Text>
+            <TextField.Root
+              defaultValue={name}
+              onChange={(e) => setName(e.target.value.trim())}
+              placeholder="Name goes here"
+            />
+          </label>
+          <label>
+            <Text as="div" size="2" mb="1" weight="bold">
+              Description
+            </Text>
+            <TextArea
+              defaultValue={description}
+              onChange={(e) => setDescription(e.target.value.trim())}
+              placeholder="Description goes here"
+            />
+          </label>
+          <Flex gap="3" justify="end">
+            <Dialog.Close>
+              <Button variant="soft" color="gray">
+                Cancel
+              </Button>
+            </Dialog.Close>
+            <Dialog.Close>
+              <Button onClick={confirm} disabled={ip === "" || name === ""}>
+                Create device
+              </Button>
+            </Dialog.Close>
+          </Flex>
+        </Flex>
+      </Dialog.Content>
     </Dialog.Root>
   );
 }
 
 function UpdateDeviceDialog({ device }) {
+  const [ip, setIp] = useState(device.ip);
+  const [name, setName] = useState(device.name);
+  const [description, setDescription] = useState(device.description);
+
+  async function confirm() {
+    const res = await fetch(`/api/devices`, {
+      method: "PUT",
+      body: JSON.stringify({
+        id: device.id ?? 0,
+        ip,
+        name,
+        description,
+      }),
+    });
+    if (!res.ok) {
+      alert(res.statusText + " " + (await res.text()));
+      return;
+    }
+    window.location.reload();
+  }
+
   return (
     <Dialog.Root>
       <Dialog.Trigger>
@@ -50,7 +138,8 @@ function UpdateDeviceDialog({ device }) {
               IP
             </Text>
             <TextField.Root
-              defaultValue={device.ip}
+              defaultValue={ip}
+              onChange={(e) => setIp(e.target.value.trim())}
               placeholder="IP goes here"
             />
           </label>
@@ -59,7 +148,8 @@ function UpdateDeviceDialog({ device }) {
               Name
             </Text>
             <TextField.Root
-              defaultValue={device.name}
+              defaultValue={name}
+              onChange={(e) => setName(e.target.value.trim())}
               placeholder="Name goes here"
             />
           </label>
@@ -68,10 +158,30 @@ function UpdateDeviceDialog({ device }) {
               Description
             </Text>
             <TextArea
-              defaultValue={device.description}
-              placeholder="IP goes here"
+              defaultValue={description}
+              onChange={(e) => setDescription(e.target.value.trim())}
+              placeholder="Description goes here"
             />
           </label>
+          <Flex gap="3" justify="end">
+            <Dialog.Close>
+              <Button variant="soft" color="gray">
+                Cancel
+              </Button>
+            </Dialog.Close>
+            <Dialog.Close>
+              <Button
+                onClick={confirm}
+                disabled={
+                  ip === device.ip &&
+                  name === device.name &&
+                  description === device.description
+                }
+              >
+                Update device
+              </Button>
+            </Dialog.Close>
+          </Flex>
         </Flex>
       </Dialog.Content>
     </Dialog.Root>
@@ -79,6 +189,17 @@ function UpdateDeviceDialog({ device }) {
 }
 
 function DeleteDeviceDialog({ device }) {
+  async function confirm() {
+    const res = await fetch(`/api/devices?id=${device.id}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) {
+      alert(res.statusText + " " + (await res.text()));
+      return;
+    }
+    window.location.reload();
+  }
+
   return (
     <AlertDialog.Root>
       <AlertDialog.Trigger>
@@ -98,7 +219,7 @@ function DeleteDeviceDialog({ device }) {
               Cancel
             </Button>
           </AlertDialog.Cancel>
-          <AlertDialog.Action>
+          <AlertDialog.Action onClick={confirm}>
             <Button color="red">Delete this device</Button>
           </AlertDialog.Action>
         </Flex>

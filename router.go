@@ -86,6 +86,7 @@ func newRouter(env *handlers.Env) http.Handler {
 
 		r.Route("/devices", func(r chi.Router) {
 			r.Use(env.AuthMiddleware(false))
+
 			r.Get("/", env.GetDevicesHandler)
 			r.Post("/", env.NewDeviceHandler)
 			r.Put("/", env.UpdateDeviceHandler)

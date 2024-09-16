@@ -76,10 +76,18 @@ func (e *Env) UpdateDeviceHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := e.Store.UpdateDevice(&body); err != nil {
-		log.Error("error updating device", "err", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	if body.ID == 0 {
+		if err := e.Store.CreateDevice(&body); err != nil {
+			log.Error("error updating device", "err", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	} else {
+		if err := e.Store.UpdateDevice(&body); err != nil {
+			log.Error("error updating device", "err", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.WriteHeader(http.StatusNoContent)
