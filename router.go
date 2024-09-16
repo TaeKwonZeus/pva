@@ -59,19 +59,19 @@ func newRouter(env *handlers.Env) http.Handler {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
 
-	r.Route("/api", func(r chi.Router) {
-		r.Route("/auth", func(r chi.Router) {
-			r.Post("/login", env.LoginHandler)
-			r.Post("/register", env.RegisterHandler)
-			r.Post("/revoke", env.Revoke)
-		})
+	r.Route("/api/auth", func(r chi.Router) {
+		r.Post("/login", env.LoginHandler)
+		r.Post("/register", env.RegisterHandler)
+		r.Post("/revoke", env.Revoke)
+	})
 
-		r.With(env.AuthMiddleware(false)).Get("/ping", pingHandler)
-		r.With(env.AuthMiddleware(false)).Get("/index", env.GetIndexHandler)
+	r.Route("/api", func(r chi.Router) {
+		r.Use(env.AuthMiddleware)
+
+		r.Get("/ping", pingHandler)
+		r.Get("/index", env.GetIndexHandler)
 
 		r.Route("/vaults", func(r chi.Router) {
-			r.Use(env.AuthMiddleware(true))
-
 			r.Get("/", env.GetVaultsHandler)
 			r.Post("/new", env.NewVaultHandler)
 			r.Patch("/{id}", env.UpdateVaultHandler)
@@ -85,8 +85,6 @@ func newRouter(env *handlers.Env) http.Handler {
 		})
 
 		r.Route("/devices", func(r chi.Router) {
-			r.Use(env.AuthMiddleware(false))
-
 			r.Get("/", env.GetDevicesHandler)
 			r.Post("/", env.NewDeviceHandler)
 			r.Put("/", env.UpdateDeviceHandler)

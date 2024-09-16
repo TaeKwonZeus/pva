@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/TaeKwonZeus/pva/crypt"
 	"github.com/TaeKwonZeus/pva/data"
 	"github.com/TaeKwonZeus/pva/handlers"
 	"github.com/TaeKwonZeus/pva/network"
@@ -44,19 +45,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	keys, err := data.NewKeys()
-	if err != nil {
-		log.Fatal("error creating keys", "err", err)
-	}
-	defer keys.Erase()
-
-	store, err := data.NewStore(path.Join(directory, dbFilename), keys.PasswordKey())
+	store, err := data.NewStore(path.Join(directory, dbFilename))
 	if err != nil {
 		log.Fatal("error setting up store", "err", err)
 	}
 	defer store.Close()
 
-	env := &handlers.Env{Store: store, Keys: keys}
+	tokenKey, err := crypt.NewAesKey()
+	if err != nil {
+		log.Fatal("error setting up AES key", "err", err)
+	}
+	env := &handlers.Env{Store: store, TokenKey: tokenKey}
 
 	ip, err := network.OutboundIP()
 	if err != nil {

@@ -16,7 +16,7 @@ func (e *Env) NewVaultHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, _, ok := authenticate(w, r, data.PermissionManagePasswords)
+	user, ok := authenticate(w, r, data.PermissionManagePasswords)
 	if !ok {
 		return
 	}
@@ -36,12 +36,12 @@ func (e *Env) NewVaultHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (e *Env) GetVaultsHandler(w http.ResponseWriter, r *http.Request) {
-	user, userKey, ok := authenticate(w, r, data.PermissionViewPasswords)
+	user, ok := authenticate(w, r, data.PermissionViewPasswords)
 	if !ok {
 		return
 	}
 
-	vaults, err := e.Store.GetVaults(user, userKey)
+	vaults, err := e.Store.GetVaults(user)
 	if err != nil {
 		log.Error(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
@@ -70,12 +70,12 @@ func (e *Env) UpdateVaultHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	body.ID = id
 
-	user, userKey, ok := authenticate(w, r, data.PermissionManagePasswords)
+	user, ok := authenticate(w, r, data.PermissionManagePasswords)
 	if !ok {
 		return
 	}
 
-	if !e.Store.CheckVaultOwnership(id, user, userKey) {
+	if !e.Store.CheckVaultOwnership(id, user) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -105,12 +105,12 @@ func (e *Env) DeleteVaultHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, userKey, ok := authenticate(w, r, data.PermissionManagePasswords)
+	user, ok := authenticate(w, r, data.PermissionManagePasswords)
 	if !ok {
 		return
 	}
 
-	if !e.Store.CheckVaultOwnership(id, user, userKey) {
+	if !e.Store.CheckVaultOwnership(id, user) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -134,12 +134,12 @@ func (e *Env) ShareVaultHandler(w http.ResponseWriter, r *http.Request) {
 
 	targetUsername := r.URL.Query().Get("target")
 
-	user, userKey, ok := authenticate(w, r, data.PermissionManagePasswords)
+	user, ok := authenticate(w, r, data.PermissionManagePasswords)
 	if !ok {
 		return
 	}
 
-	if !e.Store.CheckVaultOwnership(id, user, userKey) {
+	if !e.Store.CheckVaultOwnership(id, user) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -155,7 +155,7 @@ func (e *Env) ShareVaultHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = e.Store.ShareVault(id, target, user, userKey)
+	err = e.Store.ShareVault(id, target, user)
 	if err != nil {
 		log.Error(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
@@ -178,17 +178,17 @@ func (e *Env) NewPasswordHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, userKey, ok := authenticate(w, r, data.PermissionManagePasswords)
+	user, ok := authenticate(w, r, data.PermissionManagePasswords)
 	if !ok {
 		return
 	}
 
-	if !e.Store.CheckVaultOwnership(id, user, userKey) {
+	if !e.Store.CheckVaultOwnership(id, user) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
-	err = e.Store.CreatePassword(&body, id, user, userKey)
+	err = e.Store.CreatePassword(&body, id, user)
 	if data.IsErrConflict(err) {
 		http.Error(w, "password already exists in the same vault", http.StatusConflict)
 		return
@@ -221,17 +221,17 @@ func (e *Env) UpdatePasswordHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	body.ID = passwordId
 
-	user, userKey, ok := authenticate(w, r, data.PermissionManagePasswords)
+	user, ok := authenticate(w, r, data.PermissionManagePasswords)
 	if !ok {
 		return
 	}
 
-	if !e.Store.CheckVaultOwnership(vaultId, user, userKey) {
+	if !e.Store.CheckVaultOwnership(vaultId, user) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
-	err = e.Store.UpdatePassword(&body, vaultId, user, userKey)
+	err = e.Store.UpdatePassword(&body, vaultId, user)
 	if data.IsErrConflict(err) {
 		http.Error(w, "password already exists in the same vault", http.StatusConflict)
 		return
@@ -257,12 +257,12 @@ func (e *Env) DeletePasswordHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, userKey, ok := authenticate(w, r, data.PermissionManagePasswords)
+	user, ok := authenticate(w, r, data.PermissionManagePasswords)
 	if !ok {
 		return
 	}
 
-	if !e.Store.CheckVaultOwnership(vaultId, user, userKey) {
+	if !e.Store.CheckVaultOwnership(vaultId, user) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}

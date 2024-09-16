@@ -5,6 +5,6 @@ import (
 )
 
 type Env struct {
-	Store *data.Store
-	Keys  *data.Keys
+	Store    *data.Store
+	TokenKey []byte
 }

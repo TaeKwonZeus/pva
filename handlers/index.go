@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/TaeKwonZeus/pva/data"
 	"github.com/charmbracelet/log"
 	"net/http"
 )
@@ -21,7 +22,7 @@ type entry struct {
 }
 
 func (e *Env) GetIndexHandler(w http.ResponseWriter, r *http.Request) {
-	user, ok := authenticateNoKey(w, r, -1)
+	user, ok := authenticate(w, r, data.PermissionNone)
 	if !ok {
 		return
 	}

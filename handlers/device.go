@@ -10,7 +10,7 @@ import (
 )
 
 func (e *Env) NewDeviceHandler(w http.ResponseWriter, r *http.Request) {
-	_, ok := authenticateNoKey(w, r, data.PermissionManageDevices)
+	_, ok := authenticate(w, r, data.PermissionManageDevices)
 	if !ok {
 		return
 	}
@@ -41,7 +41,7 @@ func (e *Env) NewDeviceHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (e *Env) GetDevicesHandler(w http.ResponseWriter, r *http.Request) {
-	_, ok := authenticateNoKey(w, r, data.PermissionViewDevices)
+	_, ok := authenticate(w, r, data.PermissionViewDevices)
 	if !ok {
 		return
 	}
@@ -60,7 +60,7 @@ func (e *Env) GetDevicesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (e *Env) UpdateDeviceHandler(w http.ResponseWriter, r *http.Request) {
-	_, ok := authenticateNoKey(w, r, data.PermissionManageDevices)
+	_, ok := authenticate(w, r, data.PermissionManageDevices)
 	if !ok {
 		return
 	}
@@ -94,7 +94,7 @@ func (e *Env) UpdateDeviceHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (e *Env) DeleteDeviceHandler(w http.ResponseWriter, r *http.Request) {
-	_, ok := authenticateNoKey(w, r, data.PermissionManageDevices)
+	_, ok := authenticate(w, r, data.PermissionManageDevices)
 	if !ok {
 		return
 	}

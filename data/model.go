@@ -1,6 +1,7 @@
 package data
 
 import (
+	"github.com/TaeKwonZeus/pva/crypt"
 	"log"
 	"slices"
 	"time"
@@ -19,13 +20,14 @@ const (
 	RoleViewer Role = "viewer"
 )
 
-type Permission int
+type Permission string
 
 const (
-	PermissionViewPasswords Permission = iota
-	PermissionManagePasswords
-	PermissionViewDevices
-	PermissionManageDevices
+	PermissionNone            Permission = "none"
+	PermissionViewPasswords              = "passwords.view"
+	PermissionManagePasswords            = "passwords.manage"
+	PermissionViewDevices                = "devices.view"
+	PermissionManageDevices              = "devices.manage"
 )
 
 var permissions = map[Role][]Permission{
@@ -52,11 +54,24 @@ type User struct {
 
 	salt                []byte
 	publicKey           []byte
+	privateKey          []byte
 	privateKeyEncrypted []byte
 }
 
+func (u *User) DecryptPrivateKey(key []byte) (privateKey []byte, err error) {
+	u.privateKey, err = crypt.AesDecrypt(u.privateKeyEncrypted, key)
+	if err != nil {
+		return
+	}
+	return u.privateKey, nil
+}
+
+func (u *User) SetPrivateKey(privateKey []byte) {
+	u.privateKey = privateKey
+}
+
 func (u *User) DeriveKey(password string) []byte {
-	return deriveKey(password, u.salt)
+	return crypt.DeriveKey(password, u.salt)
 }
 
 type Vault struct {
