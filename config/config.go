@@ -11,11 +11,28 @@ import (
 type Config struct {
 	Port int `json:"port"`
 
+	Scan struct {
+		Netmask  string `json:"netmask"`
+		Interval int    `json:"interval"`
+		Timeout  int    `json:"timeout"`
+	} `json:"scan"`
+
 	path string
 }
 
-func defaultConfig(path string) *Config {
-	return &Config{Port: 5101, path: path}
+func defaultConfig() *Config {
+	return &Config{
+		Port: 5101,
+		Scan: struct {
+			Netmask  string `json:"netmask"`
+			Interval int    `json:"interval"`
+			Timeout  int    `json:"timeout"`
+		}{
+			Netmask:  "255.255.255.0",
+			Interval: 120,
+			Timeout:  1,
+		},
+	}
 }
 
 func NewConfig(path string) (*Config, error) {
@@ -35,7 +52,8 @@ func NewConfig(path string) (*Config, error) {
 		return nil, err
 	}
 
-	config = defaultConfig(path)
+	config = defaultConfig()
+	config.path = path
 	newConfig, err := json.MarshalIndent(config, "", "    ")
 	if err != nil {
 		log.Println("C")
@@ -46,13 +64,4 @@ func NewConfig(path string) (*Config, error) {
 	}
 
 	return config, nil
-}
-
-func (c *Config) Save() error {
-	newC, err := json.MarshalIndent(c, "", "    ")
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(c.path, newC, 0700)
 }

@@ -2,7 +2,6 @@ package network
 
 import (
 	"encoding/binary"
-	"errors"
 	"github.com/charmbracelet/log"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
@@ -10,6 +9,7 @@ import (
 	"net"
 	"net/netip"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -36,35 +36,6 @@ type Device struct {
 	MAC  net.HardwareAddr
 }
 
-type options struct {
-	timeout time.Duration
-	mask    net.IPMask
-}
-
-var defaultOptions = options{
-	timeout: time.Second * 1,
-	mask:    net.IPv4Mask(255, 255, 255, 0),
-}
-
-type Option func(*options) error
-
-func WithTimeout(timeout time.Duration) Option {
-	return func(o *options) error {
-		if timeout.Seconds() < 1 {
-			return errors.New("timeout cannot be less than 1 second")
-		}
-		o.timeout = timeout
-		return nil
-	}
-}
-
-func WithMask(mask net.IPMask) Option {
-	return func(o *options) error {
-		o.mask = mask
-		return nil
-	}
-}
-
 var cachedResult []Device
 
 func instantTick(interval time.Duration) <-chan time.Time {
@@ -79,11 +50,11 @@ func instantTick(interval time.Duration) <-chan time.Time {
 	return c
 }
 
-func StartAutoDiscovery(interval time.Duration, opts ...Option) {
+func StartAutoDiscovery(mask net.IPMask, timeout time.Duration, interval time.Duration) {
 	go func() {
 		var err error
 		for range instantTick(interval) {
-			cachedResult, err = Scan(opts...)
+			cachedResult, err = Scan(mask, timeout)
 			if err != nil {
 				log.Error("scanning error", "err", err.Error())
 			} else {
@@ -94,21 +65,13 @@ func StartAutoDiscovery(interval time.Duration, opts ...Option) {
 	log.Info("auto device discovery started")
 }
 
-func Devices() ([]Device, error) {
-	if cachedResult != nil {
-		return cachedResult, nil
+func Devices() []Device {
+	for cachedResult == nil {
 	}
-	return Scan()
+	return slices.Clone(cachedResult)
 }
 
-func Scan(opts ...Option) (devices []Device, err error) {
-	opt := defaultOptions
-	for _, o := range opts {
-		if err = o(&opt); err != nil {
-			return nil, err
-		}
-	}
-
+func Scan(mask net.IPMask, timeout time.Duration) (devices []Device, err error) {
 	hostIP, err := OutboundIP()
 	if err != nil {
 		return nil, err
@@ -124,7 +87,7 @@ func Scan(opts ...Option) (devices []Device, err error) {
 
 	var wg sync.WaitGroup
 	var sent atomic.Int32
-	for _, ip := range localIPs(hostIP, opt.mask) {
+	for _, ip := range localIPs(hostIP, mask) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -158,7 +121,7 @@ func Scan(opts ...Option) (devices []Device, err error) {
 	case err = <-done:
 		close(res.c)
 		return res.get(), err
-	case <-time.After(opt.timeout):
+	case <-time.After(timeout):
 		log.Debug("ICMP timeout")
 		close(res.c)
 		return res.get(), nil

@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/log"
 	"io/fs"
 	stdlog "log"
+	"net"
 	"net/http"
 	"path"
 	"time"
@@ -62,7 +63,19 @@ func main() {
 		log.Fatal(err)
 	}
 
-	network.StartAutoDiscovery(time.Minute * 2)
+	mask := net.IPMask(net.ParseIP(cfg.Scan.Netmask))
+	if mask == nil {
+		log.Fatal("invalid netmask", "mask", mask)
+	}
+	timeout := time.Duration(cfg.Scan.Timeout) * time.Second
+	if timeout < time.Second {
+		log.Fatal("timeout cannot be less than 1 second", "timeout", timeout)
+	}
+	interval := time.Duration(cfg.Scan.Interval) * time.Second
+	if interval < time.Second {
+		log.Fatal("interval cannot be less than 1 second", "interval", interval)
+	}
+	network.StartAutoDiscovery(mask, timeout, interval)
 
 	log.Infof("starting server on https://%s:%d", ip, cfg.Port)
 	err = http.ListenAndServeTLS(
