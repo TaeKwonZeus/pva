@@ -36,6 +36,7 @@ func main() {
 	// Route logs from other packages to charm logger
 	stdlog.SetFlags(0)
 	stdlog.SetOutput(lw{})
+	log.SetLevel(log.DebugLevel)
 
 	if err := setupDirectory(); err != nil {
 		log.Fatal("failed to set up working directory; please run as root", "dir", directory)
@@ -63,7 +64,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	mask := net.IPMask(net.ParseIP(cfg.Scan.Netmask))
+	mask := net.IPMask(net.ParseIP(cfg.Scan.Netmask).To4())
 	if mask == nil {
 		log.Fatal("invalid netmask", "mask", mask)
 	}

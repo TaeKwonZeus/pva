@@ -262,10 +262,7 @@ func (s *Store) GetDevices() (devices []*Device, err error) {
 		deviceMap[device.IP] = device
 	}
 
-	scan, err := network.Devices()
-	if err != nil {
-		return nil, err
-	}
+	scan := network.Devices()
 
 	// Add connected devices to the response, whether they're saved or not.
 	// If they are saved but not connected, Connected will equal false.
