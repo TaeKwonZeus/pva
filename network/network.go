@@ -3,10 +3,10 @@ package network
 import (
 	"encoding/binary"
 	"github.com/charmbracelet/log"
-	"golang.org/x/exp/maps"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
 	"golang.org/x/sync/errgroup"
+	"maps"
 	"net"
 	"net/netip"
 	"os"
@@ -79,7 +79,7 @@ func Scan(mask net.IPMask, timeout time.Duration) (devices []Device, err error) 
 		return nil, err
 	}
 
-	log.Debug("starting scan")
+	log.Debug("starting scan", "host", hostIP.String())
 
 	ips := localIPs(hostIP, mask)
 	res := make(map[netip.Addr]Device)
@@ -93,14 +93,22 @@ func Scan(mask net.IPMask, timeout time.Duration) (devices []Device, err error) 
 
 	for {
 		select {
-		case dev := <-icmpScanner:
+		case dev, k := <-icmpScanner:
+			if !k {
+				continue
+			}
 			if _, ok := res[dev.IP]; !ok {
 				res[dev.IP] = dev
 			}
-		case dev := <-tcpScanner:
+		case dev, k := <-tcpScanner:
+			if !k {
+				continue
+			}
 			res[dev.IP] = dev
 		case <-t:
-			return maps.Values(res), nil
+			devices = slices.Collect(maps.Values(res))
+			log.Info("scan complete", "devices", devices)
+			return devices, nil
 		}
 	}
 }
@@ -239,7 +247,13 @@ func scanTCP(ips []netip.Addr) <-chan Device {
 		var eg errgroup.Group
 		for _, ip := range ips {
 			eg.Go(func() error {
-				return dialTCP(ip, c)
+				err := dialTCP(ip, c)
+				if err != nil {
+					log.Debug("TCP dial error", "ip", ip, "err", err)
+					return err
+				}
+				log.Debug("TCP dial complete", "ip", ip)
+				return nil
 			})
 		}
 		if err := eg.Wait(); err != nil {
