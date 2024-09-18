@@ -3,6 +3,7 @@ package network
 import (
 	"encoding/binary"
 	"github.com/charmbracelet/log"
+	"golang.org/x/exp/maps"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
 	"golang.org/x/sync/errgroup"
@@ -31,9 +32,10 @@ func OutboundIP() (netip.Addr, error) {
 }
 
 type Device struct {
-	IP   netip.Addr
-	Name string
-	MAC  net.HardwareAddr
+	IP    netip.Addr
+	Name  string
+	MAC   net.HardwareAddr
+	IsTCP bool
 }
 
 var cachedResult []Device
@@ -79,52 +81,27 @@ func Scan(mask net.IPMask, timeout time.Duration) (devices []Device, err error) 
 
 	log.Debug("starting scan")
 
-	conn, err := icmp.ListenPacket("udp4", "0.0.0.0")
+	ips := localIPs(hostIP, mask)
+	res := make(map[netip.Addr]Device)
+
+	icmpScanner, err := scanICMP(ips)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	tcpScanner := scanTCP(ips)
+	t := time.After(timeout)
 
-	var wg sync.WaitGroup
-	var sent atomic.Int32
-	for _, ip := range localIPs(hostIP, mask) {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if err := sendICMP(conn, ip); err != nil {
-				log.Debug("ICMP send error", "ip", ip, "err", err)
-				return
+	for {
+		select {
+		case dev := <-icmpScanner:
+			if _, ok := res[dev.IP]; !ok {
+				res[dev.IP] = dev
 			}
-			log.Debug("sent packet", "ip", ip)
-			sent.Add(1)
-		}()
-	}
-	wg.Wait()
-
-	n := sent.Load()
-	log.Debugf("sent %d echo packets", n)
-
-	done := make(chan error)
-	res := newResults()
-	var eg errgroup.Group
-
-	for range n {
-		eg.Go(func() error {
-			return recvICMP(conn, res.c)
-		})
-	}
-	go func() {
-		done <- eg.Wait()
-	}()
-
-	select {
-	case err = <-done:
-		close(res.c)
-		return res.get(), err
-	case <-time.After(timeout):
-		log.Debug("ICMP timeout")
-		close(res.c)
-		return res.get(), nil
+		case dev := <-tcpScanner:
+			res[dev.IP] = dev
+		case <-t:
+			return maps.Values(res), nil
+		}
 	}
 }
 
@@ -141,6 +118,50 @@ func localIPs(hostIP netip.Addr, mask net.IPMask) []netip.Addr {
 		ips = append(ips, netip.AddrFrom4(ip))
 	}
 	return ips
+}
+
+func scanICMP(ips []netip.Addr) (<-chan Device, error) {
+	c := make(chan Device)
+
+	conn, err := icmp.ListenPacket("udp4", "0.0.0.0")
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	go func() {
+		var wg sync.WaitGroup
+		var sent atomic.Int32
+		for _, ip := range ips {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				if err := sendICMP(conn, ip); err != nil {
+					log.Debug("ICMP send error", "ip", ip, "err", err)
+					return
+				}
+				log.Debug("sent packet", "ip", ip)
+				sent.Add(1)
+			}()
+		}
+		wg.Wait()
+
+		n := sent.Load()
+		log.Debugf("sent %d echo packets", n)
+
+		var eg errgroup.Group
+		for range n {
+			eg.Go(func() error {
+				return recvICMP(conn, c)
+			})
+		}
+		if err := eg.Wait(); err != nil {
+			log.Warn("ICMP recv error", "err", err)
+		}
+		close(c)
+	}()
+
+	return c, nil
 }
 
 func sendICMP(conn *icmp.PacketConn, ip netip.Addr) error {
@@ -211,39 +232,45 @@ func recvICMP(conn *icmp.PacketConn, res chan<- Device) error {
 	return nil
 }
 
-type results struct {
-	devices map[netip.Addr]Device
-	mu      sync.Mutex
-	c       chan<- Device
-}
-
-func (r *results) get() []Device {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	devices := make([]Device, 0, len(r.devices))
-	for _, d := range r.devices {
-		devices = append(devices, d)
-	}
-	return devices
-}
-
-func newResults() *results {
+func scanTCP(ips []netip.Addr) <-chan Device {
 	c := make(chan Device)
-	r := &results{
-		devices: make(map[netip.Addr]Device),
-		c:       c,
-	}
+
 	go func() {
-		for device := range c {
-			r.mu.Lock()
-			if _, ok := r.devices[device.IP]; ok {
-				log.Debug("ICMP double receive", "ip", device.IP)
-			} else {
-				r.devices[device.IP] = device
-			}
-			r.mu.Unlock()
+		var eg errgroup.Group
+		for _, ip := range ips {
+			eg.Go(func() error {
+				return dialTCP(ip, c)
+			})
 		}
+		if err := eg.Wait(); err != nil {
+			log.Warn("TCP dial error", "err", err)
+		}
+		close(c)
 	}()
-	return r
+
+	return c
+}
+
+func dialTCP(ip netip.Addr, res chan<- Device) error {
+	conn, err := net.Dial("tcp", ip.String()+":http")
+	if err != nil {
+		return err
+	}
+
+	host, _, err := net.SplitHostPort(conn.RemoteAddr().String())
+	if err != nil {
+		return err
+	}
+
+	addr, err := netip.ParseAddr(host)
+	if err != nil {
+		return err
+	}
+
+	res <- Device{
+		IP:    addr,
+		IsTCP: true,
+	}
+
+	return conn.Close()
 }
