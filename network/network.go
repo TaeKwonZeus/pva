@@ -135,9 +135,10 @@ func scanICMP(ips []netip.Addr) (<-chan Device, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 
 	go func() {
+		defer conn.Close()
+
 		var wg sync.WaitGroup
 		var sent atomic.Int32
 		for _, ip := range ips {
@@ -177,9 +178,8 @@ func sendICMP(conn *icmp.PacketConn, ip netip.Addr) error {
 		Type: ipv4.ICMPTypeEcho,
 		Code: 0,
 		Body: &icmp.Echo{
-			ID:   os.Getpid() & 0xffff,
-			Seq:  1,
-			Data: nil,
+			ID:  os.Getpid() & 0xffff,
+			Seq: 1,
 		},
 	}).Marshal(nil)
 
