@@ -97,7 +97,7 @@ func (s *Store) CreateVault(vault *Vault, owner *User) error {
 		return err
 	}
 
-	// Add a key for all admins
+	// Add a keyEncrypted for all admins
 	admins, err := s.db.getAdmins()
 	if err != nil {
 		return err

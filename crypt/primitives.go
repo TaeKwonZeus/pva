@@ -12,11 +12,10 @@ import (
 )
 
 const (
-	nonceSize   = 12
-	saltSize    = 32
-	aesKeySize  = 32
-	hmacKeySize = 32
-	rsaKeySize  = 4096
+	nonceSize  = 12
+	saltSize   = 32
+	aesKeySize = 32
+	rsaKeySize = 4096
 )
 
 //

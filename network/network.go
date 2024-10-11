@@ -84,11 +84,11 @@ func Scan(mask net.IPMask, timeout time.Duration) (devices []Device, err error) 
 	ips := localIPs(hostIP, mask)
 	res := make(map[netip.Addr]Device)
 
-	icmpScanner, err := scanICMP(ips)
+	icmpScanner, err := scanICMP(ips, timeout)
 	if err != nil {
 		return nil, err
 	}
-	tcpScanner := scanTCP(ips)
+	tcpScanner := scanTCP(ips, timeout)
 	t := time.After(timeout)
 
 	for {
@@ -128,11 +128,15 @@ func localIPs(hostIP netip.Addr, mask net.IPMask) []netip.Addr {
 	return ips
 }
 
-func scanICMP(ips []netip.Addr) (<-chan Device, error) {
+func scanICMP(ips []netip.Addr, timeout time.Duration) (<-chan Device, error) {
 	c := make(chan Device)
 
 	conn, err := icmp.ListenPacket("udp4", "0.0.0.0")
 	if err != nil {
+		return nil, err
+	}
+
+	if err = conn.SetDeadline(time.Now().Add(timeout)); err != nil {
 		return nil, err
 	}
 
@@ -240,14 +244,14 @@ func recvICMP(conn *icmp.PacketConn, res chan<- Device) error {
 	return nil
 }
 
-func scanTCP(ips []netip.Addr) <-chan Device {
+func scanTCP(ips []netip.Addr, timeout time.Duration) <-chan Device {
 	c := make(chan Device)
 
 	go func() {
 		var eg errgroup.Group
 		for _, ip := range ips {
 			eg.Go(func() error {
-				err := dialTCP(ip, c)
+				err := dialTCP(ip, timeout, c)
 				if err != nil {
 					log.Debug("TCP dial error", "ip", ip, "err", err)
 					return err
@@ -265,9 +269,13 @@ func scanTCP(ips []netip.Addr) <-chan Device {
 	return c
 }
 
-func dialTCP(ip netip.Addr, res chan<- Device) error {
+func dialTCP(ip netip.Addr, timeout time.Duration, res chan<- Device) error {
 	conn, err := net.Dial("tcp", ip.String()+":http")
 	if err != nil {
+		return err
+	}
+
+	if err = conn.SetDeadline(time.Now().Add(timeout)); err != nil {
 		return err
 	}
 

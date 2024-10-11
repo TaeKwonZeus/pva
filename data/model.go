@@ -28,11 +28,24 @@ const (
 	PermissionManagePasswords            = "passwords.manage"
 	PermissionViewDevices                = "devices.view"
 	PermissionManageDevices              = "devices.manage"
+	PermissionViewDocuments              = "documents.view"
+	PermissionManageDocuments            = "documents.manage"
 )
 
 var permissions = map[Role][]Permission{
-	RoleManager: {PermissionViewPasswords, PermissionManagePasswords, PermissionViewDevices, PermissionManageDevices},
-	RoleViewer:  {PermissionViewPasswords, PermissionViewDevices},
+	RoleManager: {
+		PermissionViewPasswords,
+		PermissionManagePasswords,
+		PermissionViewDevices,
+		PermissionManageDevices,
+		PermissionViewDocuments,
+		PermissionManageDocuments,
+	},
+	RoleViewer: {
+		PermissionViewPasswords,
+		PermissionViewDevices,
+		PermissionViewDocuments,
+	},
 }
 
 func CheckPermission(role Role, permission Permission) bool {
@@ -79,6 +92,8 @@ type Vault struct {
 	Name      string      `json:"name"`
 	OwnerId   int         `json:"ownerId,omitempty"`
 	Passwords []*Password `json:"passwords"`
+
+	keyEncrypted []byte
 }
 
 type Password struct {
@@ -100,6 +115,17 @@ type Device struct {
 	//NetworkName string `json:"networkName"`
 	//MAC       string `json:"mac"`
 	Connected bool `json:"connected"`
+}
+
+type Document struct {
+	ID        int       `json:"id"`
+	Name      string    `json:"name"`
+	Payload   string    `json:"payload"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+
+	payloadEncrypted []byte
+	keyEncrypted     []byte
 }
 
 type Index struct {

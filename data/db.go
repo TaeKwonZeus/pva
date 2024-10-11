@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"github.com/mattn/go-sqlite3"
-	"log"
 	"time"
 )
 
@@ -83,17 +82,14 @@ func (d *db) getUser(id int) (user *User, err error) {
 
 	user.salt, err = base64.StdEncoding.DecodeString(salt)
 	if err != nil {
-		log.Println("failed to decode salt")
 		return nil, err
 	}
 	user.publicKey, err = base64.StdEncoding.DecodeString(publicKey)
 	if err != nil {
-		log.Println("failed to decode public key")
 		return nil, err
 	}
 	user.privateKeyEncrypted, err = base64.StdEncoding.DecodeString(privateKeyEncrypted)
 	if err != nil {
-		log.Println("failed to decode private key")
 		return nil, err
 	}
 
@@ -116,17 +112,14 @@ func (d *db) getUserByUsername(username string) (user *User, err error) {
 
 	user.salt, err = base64.StdEncoding.DecodeString(salt)
 	if err != nil {
-		log.Println("failed to decode salt")
 		return nil, err
 	}
 	user.publicKey, err = base64.StdEncoding.DecodeString(publicKey)
 	if err != nil {
-		log.Println("failed to decode public key")
 		return nil, err
 	}
 	user.privateKeyEncrypted, err = base64.StdEncoding.DecodeString(privateKeyEncrypted)
 	if err != nil {
-		log.Println("failed to decode private key")
 		return nil, err
 	}
 
@@ -154,17 +147,14 @@ func (d *db) getAdmins() (users []*User, err error) {
 
 		user.salt, err = base64.StdEncoding.DecodeString(salt)
 		if err != nil {
-			log.Println("failed to decode salt")
 			return nil, err
 		}
 		user.publicKey, err = base64.StdEncoding.DecodeString(publicKey)
 		if err != nil {
-			log.Println("failed to decode public key")
 			return nil, err
 		}
 		user.privateKeyEncrypted, err = base64.StdEncoding.DecodeString(privateKeyEncrypted)
 		if err != nil {
-			log.Println("failed to decode private key")
 			return nil, err
 		}
 
@@ -245,7 +235,6 @@ func (d *db) getVaultKey(id, userId int) (key []byte, err error) {
 
 	key, err = base64.StdEncoding.DecodeString(keyString)
 	if err != nil {
-		log.Println("failed to decode vault key")
 		return nil, err
 	}
 
@@ -261,7 +250,7 @@ func (d *db) getVault(id, userId int) (vnk *vaultAndKey, err error) {
 		return nil, err
 	}
 
-	// Get vault key
+	// Get vault keyEncrypted
 	key, err := d.getVaultKey(vault.ID, userId)
 	if err != nil {
 		return nil, err
@@ -442,4 +431,74 @@ func (d *db) updateDevice(device *Device) error {
 func (d *db) deleteDevice(id int) error {
 	_, err := d.pool.Exec("DELETE FROM devices WHERE id=?", id)
 	return err
+}
+
+func (d *db) createDocument(document *Document, userId int) error {
+	tx, err := d.pool.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	res, err := tx.Exec("INSERT INTO documents (name, payload_encrypted, created_at, updated_at) VALUES (?, ?, ?, ?)",
+		document.Name, document.payloadEncrypted, document.CreatedAt, document.UpdatedAt)
+	if err != nil {
+		return err
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec("INSERT INTO document_keys (user_id, document_id, document_key_encrypted) VALUES (?, ?, ?)",
+		userId, id, document.keyEncrypted)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (d *db) getDocuments(userId int) (docs []*Document, err error) {
+	rows, err := d.pool.Query(`SELECT d.id, d.name, d.payload_encrypted, d.created_at, d.updated_at, k.document_key_encrypted
+		FROM documents d
+		INNER JOIN document_keys k ON k.document_id = d.id
+		WHERE k.user_id = ?`, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		var doc Document
+		err = rows.Scan(&doc.ID, &doc.Name, &doc.payloadEncrypted, &doc.CreatedAt, &doc.UpdatedAt, &doc.keyEncrypted)
+		if err != nil {
+			return nil, err
+		}
+		docs = append(docs, &doc)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return docs, nil
+}
+
+func (d *db) getDocument(id, userId int) (doc *Document, err error) {
+	doc = &Document{ID: id}
+	var keyString string
+
+	row := d.pool.QueryRow(`SELECT d.name, d.payload_encrypted, d.created_at, d.updated_at, k.document_key_encrypted
+		FROM documents d
+		INNER JOIN document_keys k ON k.document_id = d.id
+		WHERE d.id = ? AND k.user_id = ?`, id, userId)
+
+	err = row.Scan(&doc.Name, &doc.payloadEncrypted, &doc.CreatedAt, &doc.UpdatedAt, &keyString)
+	if err != nil {
+		return nil, err
+	}
+
+	doc.keyEncrypted, err = base64.StdEncoding.DecodeString(keyString)
+	return doc, err
+}
+
+func (d *db) updateDocument(id, userId int) error {
+	// TODO implement
+	return nil
 }

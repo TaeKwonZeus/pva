@@ -76,7 +76,6 @@ func newRouter(env *handlers.Env) http.Handler {
 			r.Post("/new", env.NewVaultHandler)
 			r.Patch("/{id}", env.UpdateVaultHandler)
 			r.Delete("/{id}", env.DeleteVaultHandler)
-			r.Patch("/{id}", env.ShareVaultHandler)
 			r.Post("/{id}/share", env.ShareVaultHandler)
 
 			r.Post("/{id}/new", env.NewPasswordHandler)
@@ -89,6 +88,15 @@ func newRouter(env *handlers.Env) http.Handler {
 			r.Post("/", env.NewDeviceHandler)
 			r.Put("/", env.UpdateDeviceHandler)
 			r.Delete("/", env.DeleteDeviceHandler)
+		})
+
+		r.Route("/documents", func(r chi.Router) {
+			r.Get("/", env.GetDocumentHandler)
+			r.Post("/", env.NewDocumentHandler)
+			r.Put("/", env.UpdateDocumentHandler)
+			r.Delete("/", env.DeleteDocumentHandler)
+
+			r.Post("/share", env.ShareDocumentHandler)
 		})
 	})
 
@@ -105,6 +113,6 @@ func newRouter(env *handlers.Env) http.Handler {
 	return r
 }
 
-func pingHandler(w http.ResponseWriter, r *http.Request) {
+func pingHandler(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write([]byte("pong"))
 }
