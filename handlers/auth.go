@@ -199,7 +199,7 @@ func (e *Env) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		user.Role = data.RoleViewer
 	}
 
-	err = e.Store.CreateUser(&user, c.Password)
+	err = e.Store.CreateUser(user, c.Password)
 	if data.IsErrConflict(err) {
 		http.Error(w, "user already exists", http.StatusConflict)
 		return
@@ -222,17 +222,17 @@ func (_ *Env) Revoke(w http.ResponseWriter, _ *http.Request) {
 	})
 }
 
-func authenticate(w http.ResponseWriter, r *http.Request, permission data.Permission) (user *data.User, ok bool) {
-	user, ok = r.Context().Value("user").(*data.User)
+func authenticate(w http.ResponseWriter, r *http.Request, permission data.Permission) (user data.User, ok bool) {
+	user, ok = r.Context().Value("user").(data.User)
 	if !ok {
 		log.Error("could not get user from context")
 		w.WriteHeader(http.StatusInternalServerError)
-		return nil, false
+		return data.User{}, false
 	}
 
 	if permission != data.PermissionNone && !data.CheckPermission(user.Role, permission) {
 		http.Error(w, "permission not satisfied: "+string(permission), http.StatusForbidden)
-		return nil, false
+		return data.User{}, false
 	}
 	return user, true
 }

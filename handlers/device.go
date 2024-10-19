@@ -26,7 +26,7 @@ func (e *Env) NewDeviceHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := e.Store.CreateDevice(&body)
+	err := e.Store.CreateDevice(body)
 	if data.IsErrConflict(err) {
 		http.Error(w, "device already exists", http.StatusConflict)
 		return
@@ -77,13 +77,13 @@ func (e *Env) UpdateDeviceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if body.ID == 0 {
-		if err := e.Store.CreateDevice(&body); err != nil {
+		if err := e.Store.CreateDevice(body); err != nil {
 			log.Error("error updating device", "err", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	} else {
-		if err := e.Store.UpdateDevice(&body); err != nil {
+		if err := e.Store.UpdateDevice(body); err != nil {
 			log.Error("error updating device", "err", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return

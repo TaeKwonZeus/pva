@@ -4,7 +4,6 @@ import (
 	"github.com/TaeKwonZeus/pva/crypt"
 	"log"
 	"slices"
-	"time"
 )
 
 type Role string
@@ -61,73 +60,68 @@ func CheckPermission(role Role, permission Permission) bool {
 }
 
 type User struct {
-	ID       int    `json:"id,omitempty"`
-	Username string `json:"username"`
-	Role     Role   `json:"role"`
+	ID       int    `json:"id,omitempty" db:"id"`
+	Username string `json:"username" db:"username"`
+	Role     Role   `json:"role" db:"role"`
 
-	salt                []byte
-	publicKey           []byte
-	privateKey          []byte
-	privateKeyEncrypted []byte
+	Salt                []byte `json:"-" db:"salt"`
+	PublicKey           []byte `json:"-" db:"public_key"`
+	PrivateKey          []byte `json:"-"`
+	PrivateKeyEncrypted []byte `json:"-" db:"private_key_encrypted"`
 }
 
 func (u *User) DecryptPrivateKey(key []byte) (privateKey []byte, err error) {
-	u.privateKey, err = crypt.AesDecrypt(u.privateKeyEncrypted, key)
+	u.PrivateKey, err = crypt.AesDecrypt(u.PrivateKeyEncrypted, key)
 	if err != nil {
 		return
 	}
-	return u.privateKey, nil
+	return u.PrivateKey, nil
 }
 
 func (u *User) SetPrivateKey(privateKey []byte) {
-	u.privateKey = privateKey
+	u.PrivateKey = privateKey
 }
 
 func (u *User) DeriveKey(password string) []byte {
-	return crypt.DeriveKey(password, u.salt)
+	return crypt.DeriveKey(password, u.Salt)
 }
 
 type Vault struct {
-	ID        int         `json:"id,omitempty"`
-	Name      string      `json:"name"`
-	OwnerId   int         `json:"ownerId,omitempty"`
-	Passwords []*Password `json:"passwords"`
+	ID        int        `json:"id,omitempty" db:"id"`
+	Name      string     `json:"name" db:"name"`
+	Passwords []Password `json:"passwords"`
 
-	keyEncrypted []byte
+	KeyEncrypted []byte `json:"-" db:"key_encrypted"`
 }
 
 type Password struct {
-	ID          int       `json:"id,omitempty"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Password    string    `json:"password,omitempty"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	ID          int    `json:"id,omitempty" db:"id"`
+	Name        string `json:"name" db:"name"`
+	Description string `json:"description" db:"description"`
+	Password    string `json:"password,omitempty"`
 
-	passwordEncrypted []byte
+	PasswordEncrypted []byte `json:"-" db:"password_encrypted"`
 }
 
 type Device struct {
-	ID          int    `json:"id"`
-	IP          string `json:"ip"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	ID          int    `json:"id" db:"id"`
+	IP          string `json:"ip" db:"ip"`
+	Name        string `json:"name" db:"name"`
+	Description string `json:"description" db:"description"`
 	//NetworkName string `json:"networkName"`
 	//MAC       string `json:"mac"`
 	Connected bool `json:"connected"`
 }
 
 type Document struct {
-	ID        int       `json:"id"`
-	Name      string    `json:"name"`
-	Payload   string    `json:"payload"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ID      int    `json:"id" db:"id"`
+	Name    string `json:"name" db:"name"`
+	Payload string `json:"payload"`
 
-	payloadEncrypted []byte
-	keyEncrypted     []byte
+	PayloadEncrypted []byte `json:"-" db:"payload_encrypted"`
+	KeyEncrypted     []byte `json:"-" db:"key_encrypted"`
 }
 
 type Index struct {
-	Vaults []*Vault `json:"vaults"`
+	Vaults []Vault `json:"vaults"`
 }

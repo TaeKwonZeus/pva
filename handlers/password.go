@@ -21,7 +21,7 @@ func (e *Env) NewVaultHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := e.Store.CreateVault(&body, user)
+	err := e.Store.CreateVault(body, user)
 	if data.IsErrConflict(err) {
 		http.Error(w, "vault already exists", http.StatusConflict)
 		return
@@ -80,7 +80,7 @@ func (e *Env) UpdateVaultHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = e.Store.UpdateVault(&body)
+	err = e.Store.UpdateVault(body)
 	if data.IsErrNotFound(err) {
 		http.Error(w, "vault not found", http.StatusNotFound)
 		return
@@ -188,7 +188,7 @@ func (e *Env) NewPasswordHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = e.Store.CreatePassword(&body, id, user)
+	err = e.Store.CreatePassword(body, id, user)
 	if data.IsErrConflict(err) {
 		http.Error(w, "password already exists in the same vault", http.StatusConflict)
 		return
@@ -231,7 +231,7 @@ func (e *Env) UpdatePasswordHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = e.Store.UpdatePassword(&body, vaultId, user)
+	err = e.Store.UpdatePassword(body, vaultId, user)
 	if data.IsErrConflict(err) {
 		http.Error(w, "password already exists in the same vault", http.StatusConflict)
 		return

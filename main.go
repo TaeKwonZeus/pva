@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/TaeKwonZeus/pva/crypt"
 	"github.com/TaeKwonZeus/pva/data"
 	"github.com/TaeKwonZeus/pva/handlers"
 	"github.com/TaeKwonZeus/pva/network"
@@ -36,7 +35,7 @@ func main() {
 	// Route logs from other packages to charm logger
 	stdlog.SetFlags(0)
 	stdlog.SetOutput(lw{})
-	log.SetLevel(log.DebugLevel)
+	// log.SetLevel(log.DebugLevel)
 
 	if err := setupDirectory(); err != nil {
 		log.Fatal("failed to set up working directory; please run as root", "dir", directory)
@@ -53,10 +52,12 @@ func main() {
 	}
 	defer store.Close()
 
-	tokenKey, err := crypt.NewAesKey()
-	if err != nil {
-		log.Fatal("error setting up AES key", "err", err)
-	}
+	//tokenKey, err := crypt.NewAesKey()
+	//if err != nil {
+	//	log.Fatal("error setting up AES key", "err", err)
+	//}
+	// FIXME change in prod
+	tokenKey := make([]byte, 32)
 	env := &handlers.Env{Store: store, TokenKey: tokenKey}
 
 	ip, err := network.OutboundIP()

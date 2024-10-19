@@ -6,16 +6,15 @@ CREATE TABLE IF NOT EXISTS users
     username              TEXT NOT NULL UNIQUE,
     role                  TEXT NOT NULL,
 
-    salt                  TEXT NOT NULL,
-    public_key            TEXT NOT NULL,
-    private_key_encrypted TEXT NOT NULL
+    salt                  BLOB NOT NULL,
+    public_key            BLOB NOT NULL,
+    private_key_encrypted BLOB NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS vaults
 (
     id       INTEGER PRIMARY KEY,
-    name     TEXT    NOT NULL UNIQUE,
-    owner_id INTEGER REFERENCES users (id) ON DELETE SET NULL
+    name     TEXT    NOT NULL UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS passwords
@@ -23,9 +22,7 @@ CREATE TABLE IF NOT EXISTS passwords
     id                 INTEGER PRIMARY KEY,
     name               TEXT    NOT NULL,
     description        TEXT    NOT NULL,
-    password_encrypted TEXT    NOT NULL,
-    created_at         INTEGER NOT NULL,
-    updated_at         INTEGER NOT NULL,
+    password_encrypted BLOB    NOT NULL,
     vault_id           INTEGER REFERENCES vaults (id) ON DELETE CASCADE,
 
     UNIQUE (name, vault_id)
@@ -37,7 +34,7 @@ CREATE TABLE IF NOT EXISTS vault_keys
     vault_id            INTEGER REFERENCES vaults (id) ON DELETE CASCADE,
 
     -- Encrypted with user's public key
-    vault_key_encrypted TEXT NOT NULL,
+    key_encrypted BLOB NOT NULL,
 
     PRIMARY KEY (user_id, vault_id)
 );
@@ -54,9 +51,7 @@ CREATE TABLE IF NOT EXISTS documents
 (
     id                INTEGER PRIMARY KEY,
     name              TEXT UNIQUE NOT NULL,
-    payload_encrypted TEXT        NOT NULL,
-    created_at        INTEGER     NOT NULL,
-    updated_at        INTEGER     NOT NULL
+    payload_encrypted BLOB        NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS attachments
@@ -71,7 +66,7 @@ CREATE TABLE IF NOT EXISTS document_keys
     user_id                INTEGER REFERENCES users (id) ON DELETE CASCADE,
     document_id            INTEGER REFERENCES documents (id) ON DELETE CASCADE,
 
-    document_key_encrypted TEXT NOT NULL,
+    key_encrypted BLOB NOT NULL,
 
     PRIMARY KEY (user_id, document_id)
 );
