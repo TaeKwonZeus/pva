@@ -14,7 +14,7 @@ func (e *Env) GetDocumentHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (e *Env) NewDocumentHandler(w http.ResponseWriter, r *http.Request) {
-	_, ok := authenticate(w, r, data.PermissionManageDocuments)
+	user, ok := authenticate(w, r, data.PermissionManageDocuments)
 	if !ok {
 		return
 	}
@@ -27,7 +27,6 @@ func (e *Env) NewDocumentHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
 }
 
 func (e *Env) UpdateDocumentHandler(w http.ResponseWriter, r *http.Request) {

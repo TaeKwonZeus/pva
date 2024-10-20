@@ -78,7 +78,8 @@ func (s *Store) CreateUser(user User, password string) error {
 		return err
 	}
 
-	return s.db.createUser(user)
+	_, err = s.db.createUser(user)
+	return err
 }
 
 func (s *Store) CreateVault(vault Vault, user User) error {
@@ -92,7 +93,8 @@ func (s *Store) CreateVault(vault Vault, user User) error {
 		return err
 	}
 
-	if err = s.db.createVault(vault, vaultKeyEncrypted, user.ID); err != nil {
+	vaultId, err := s.db.createVault(vault)
+	if err != nil {
 		return err
 	}
 
@@ -102,13 +104,17 @@ func (s *Store) CreateVault(vault Vault, user User) error {
 		return err
 	}
 
-	var vaultKeys []vaultKey
+	vaultKeys := []vaultKey{{
+		UserId:       user.ID,
+		VaultId:      vaultId,
+		KeyEncrypted: vaultKeyEncrypted,
+	}}
 	for _, admin := range admins {
 		vaultKeyEncrypted, err = crypt.RsaEncrypt(key, admin.PublicKey)
 		if err != nil {
 			return err
 		}
-		vaultKeys = append(vaultKeys, vaultKey{UserId: admin.ID, VaultId: vault.ID, KeyEncrypted: vaultKeyEncrypted})
+		vaultKeys = append(vaultKeys, vaultKey{UserId: admin.ID, VaultId: vaultId, KeyEncrypted: vaultKeyEncrypted})
 	}
 	return s.db.createVaultKeys(vaultKeys...)
 }
@@ -215,7 +221,8 @@ func (s *Store) CreatePassword(password Password, vaultId int, user User) error 
 		return err
 	}
 
-	return s.db.createPassword(password, vaultId)
+	_, err = s.db.createPassword(password, vaultId)
+	return err
 }
 
 func (s *Store) UpdatePassword(password Password, vaultId int, user User) error {
@@ -242,7 +249,8 @@ func (s *Store) DeletePassword(id int) error {
 }
 
 func (s *Store) CreateDevice(device Device) error {
-	return s.db.createDevice(device)
+	_, err := s.db.createDevice(device)
+	return err
 }
 
 func (s *Store) GetDevices() (devices []Device, err error) {
@@ -286,4 +294,71 @@ func (s *Store) UpdateDevice(device Device) error {
 
 func (s *Store) DeleteDevice(id int) error {
 	return s.db.deleteDevice(id)
+}
+
+func (s *Store) CreateDocument(doc Document, user User) error {
+	key, err := crypt.NewAesKey()
+	if err != nil {
+		return err
+	}
+
+	keyEncrypted, err := crypt.RsaEncrypt(key, user.PublicKey)
+	if err != nil {
+		return err
+	}
+	doc.PayloadEncrypted, err = crypt.AesEncrypt([]byte(doc.Payload), key)
+	if err != nil {
+		return err
+	}
+	docId, err := s.db.createDocument(doc)
+	if err != nil {
+		return err
+	}
+
+	documentKeys := []documentKey{{
+		UserId:       user.ID,
+		DocumentId:   docId,
+		KeyEncrypted: keyEncrypted,
+	}}
+
+	admins, err := s.db.getAdmins()
+	if err != nil {
+		return err
+	}
+	for _, admin := range admins {
+		keyEncrypted, err = crypt.RsaEncrypt(key, admin.PublicKey)
+		if err != nil {
+			return err
+		}
+		documentKeys = append(documentKeys, documentKey{
+			UserId:       admin.ID,
+			DocumentId:   docId,
+			KeyEncrypted: keyEncrypted,
+		})
+	}
+
+	return s.db.createDocumentKeys(documentKeys...)
+}
+
+func (s *Store) GetDocuments(user User) (docs []Document, err error) {
+	docs, err = s.db.getDocuments(user.ID)
+	if err != nil {
+		return
+	}
+	for i := range docs {
+		key, err := crypt.RsaDecrypt(docs[i].KeyEncrypted, user.PrivateKey)
+		if err != nil {
+			return
+		}
+		payload, err := crypt.AesDecrypt(key, docs[i].PayloadEncrypted)
+		if err != nil {
+			return
+		}
+		docs[i].Payload = string(payload)
+	}
+	return
+}
+
+func (s *Store) GetAttachment(id int, user User) (attachment Attachment, err error) {
+	return
 }

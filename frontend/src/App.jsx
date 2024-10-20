@@ -17,6 +17,7 @@ import {
   LockClosedIcon,
   MagnifyingGlassIcon,
   SketchLogoIcon,
+  FileIcon,
 } from "@radix-ui/react-icons";
 import { Outlet, useNavigate } from "react-router-dom";
 import { logOut } from "./auth.js";
@@ -120,6 +121,11 @@ function App() {
       href: "/devices",
       label: "Devices",
       icon: <DesktopIcon />,
+    },
+    {
+      href: "/documents",
+      label: "Documents",
+      icon: <FileIcon />,
     },
   ];
 

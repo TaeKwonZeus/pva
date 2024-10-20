@@ -169,7 +169,7 @@ func scanICMP(ips []netip.Addr, timeout time.Duration) (<-chan Device, error) {
 			})
 		}
 		if err := eg.Wait(); err != nil {
-			log.Warn("ICMP recv error", "err", err)
+			log.Debug("ICMP recv error", "err", err)
 		}
 		close(c)
 	}()
@@ -226,11 +226,11 @@ func recvICMP(conn *icmp.PacketConn, res chan<- Device) error {
 			default:
 				dest = "dest"
 			}
-			log.Warn("ICMP unreachable", "dest", dest, "ip", peerIP.String())
+			log.Debug("ICMP unreachable", "dest", dest, "ip", peerIP.String())
 		case *icmp.PacketTooBig:
-			log.Warn("ICMP packet too big", "mtu", b.MTU, "ip", peerIP.String())
+			log.Debug("ICMP packet too big", "mtu", b.MTU, "ip", peerIP.String())
 		default:
-			log.Warn("ICMP non-echo response", "msg", msg, "ip", peerIP.String())
+			log.Debug("ICMP non-echo response", "msg", msg, "ip", peerIP.String())
 		}
 		return nil
 	}
@@ -261,7 +261,7 @@ func scanTCP(ips []netip.Addr, timeout time.Duration) <-chan Device {
 			})
 		}
 		if err := eg.Wait(); err != nil {
-			log.Warn("TCP dial error", "err", err)
+			log.Debug("TCP dial error", "err", err)
 		}
 		close(c)
 	}()

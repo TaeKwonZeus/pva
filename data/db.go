@@ -42,11 +42,15 @@ func (d *db) getUserCount() (n int, err error) {
 	return
 }
 
-func (d *db) createUser(user User) error {
-	_, err := d.pool.NamedExec(
+func (d *db) createUser(user User) (id int, err error) {
+	res, err := d.pool.NamedExec(
 		`INSERT INTO users (username, role, salt, public_key, private_key_encrypted)
 		VALUES (:username, :role, :salt, :public_key, :private_key_encrypted)`, user)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	i, err := res.LastInsertId()
+	return int(i), err
 }
 
 func (d *db) getUser(id int) (user User, err error) {
@@ -67,26 +71,13 @@ func (d *db) getAdmins() (users []User, err error) {
 	return
 }
 
-func (d *db) createVault(vault Vault, vaultKeyEncrypted []byte, userId int) error {
-	tx, err := d.pool.Beginx()
+func (d *db) createVault(vault Vault) (id int, err error) {
+	res, err := d.pool.NamedExec("INSERT INTO vaults (name) VALUES (:name)", vault)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	defer tx.Rollback()
-
-	res, err := tx.NamedExec("INSERT INTO vaults (name) VALUES (:name)", vault)
-	if err != nil {
-		return err
-	}
-	id, _ := res.LastInsertId()
-
-	_, err = tx.Exec("INSERT INTO vault_keys (user_id, vault_id, key_encrypted) VALUES (?, ?, ?)",
-		userId, id, vaultKeyEncrypted)
-	if err != nil {
-		return err
-	}
-
-	return tx.Commit()
+	i, err := res.LastInsertId()
+	return int(i), err
 }
 
 type vaultKey struct {
@@ -157,8 +148,8 @@ func (d *db) deleteVault(id int) error {
 	return err
 }
 
-func (d *db) createPassword(password Password, vaultId int) error {
-	_, err := d.pool.Exec(
+func (d *db) createPassword(password Password, vaultId int) (id int, err error) {
+	res, err := d.pool.Exec(
 		`INSERT INTO passwords (name, description, password_encrypted, vault_id)
 		VALUES (?, ?, ?, ?)`,
 		password.Name,
@@ -166,7 +157,11 @@ func (d *db) createPassword(password Password, vaultId int) error {
 		password.PasswordEncrypted,
 		vaultId,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	i, err := res.LastInsertId()
+	return int(i), err
 }
 
 func (d *db) getPasswords(vaultId int) (passwords []Password, err error) {
@@ -209,10 +204,14 @@ func (d *db) deletePassword(id int) error {
 	return err
 }
 
-func (d *db) createDevice(device Device) error {
-	_, err := d.pool.NamedExec("INSERT INTO devices (ip, name, description) VALUES (:ip, :name, :description)",
+func (d *db) createDevice(device Device) (id int, err error) {
+	res, err := d.pool.NamedExec("INSERT INTO devices (ip, name, description) VALUES (:ip, :name, :description)",
 		device)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	i, err := res.LastInsertId()
+	return int(i), err
 }
 
 func (d *db) getDevices() (devices []Device, err error) {
@@ -231,27 +230,35 @@ func (d *db) deleteDevice(id int) error {
 	return err
 }
 
-func (d *db) createDocument(document Document, userId int) error {
-	tx, err := d.pool.Begin()
+func (d *db) createDocument(document Document) (id int, err error) {
+	res, err := d.pool.Exec("INSERT INTO documents (name, payload_encrypted) VALUES (?, ?)",
+		document.Name, document.PayloadEncrypted)
+	if err != nil {
+		return 0, err
+	}
+	i, err := res.LastInsertId()
+	return int(i), err
+}
+
+type documentKey struct {
+	UserId       int    `db:"user_id"`
+	DocumentId   int    `db:"vault_id"`
+	KeyEncrypted []byte `db:"key_encrypted"`
+}
+
+func (d *db) createDocumentKeys(keys ...documentKey) error {
+	tx, err := d.pool.Beginx()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	res, err := tx.Exec("INSERT INTO documents (name, payload_encrypted) VALUES (?, ?)",
-		document.Name, document.PayloadEncrypted)
+	_, err = tx.NamedExec(`INSERT INTO document_keys (user_id, document_id, key_encrypted)
+		VALUES (:user_id, :document_id, :key_encrypted)`, keys)
 	if err != nil {
 		return err
 	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return err
-	}
-	_, err = tx.Exec("INSERT INTO document_keys (user_id, document_id, key_encrypted) VALUES (?, ?, ?)",
-		userId, id, document.KeyEncrypted)
-	if err != nil {
-		return err
-	}
+
 	return tx.Commit()
 }
 
@@ -259,12 +266,16 @@ func (d *db) getDocuments(userId int) (docs []Document, err error) {
 	docs = []Document{}
 	err = d.pool.Select(&docs, `SELECT d.*, dk.key_encrypted FROM documents d
         INNER JOIN document_keys dk on d.id = dk.document_id WHERE dk.user_id=?`, userId)
+
+	// TODO add attachments
 	return
 }
 
 func (d *db) getDocument(id, userId int) (doc Document, err error) {
 	err = d.pool.Get(&doc, `SELECT d.*, dk.key_encrypted FROM documents d
         INNER JOIN document_keys dk on d.id = dk.document_id WHERE user_id=? AND document_id=?`, userId, id)
+
+	// TODO add attachments
 	return doc, err
 }
 

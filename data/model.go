@@ -114,12 +114,20 @@ type Device struct {
 }
 
 type Document struct {
-	ID      int    `json:"id" db:"id"`
-	Name    string `json:"name" db:"name"`
-	Payload string `json:"payload"`
+	ID          int          `json:"id" db:"id"`
+	Name        string       `json:"name" db:"name"`
+	Payload     string       `json:"payload"`
+	FileName    string       `json:"-" db:"file_name"`
+	Attachments []Attachment `json:"attachments"`
 
 	PayloadEncrypted []byte `json:"-" db:"payload_encrypted"`
 	KeyEncrypted     []byte `json:"-" db:"key_encrypted"`
+}
+
+type Attachment struct {
+	ID       int    `json:"id" db:"id"`
+	Name     string `json:"name" db:"name"`
+	FileName string `json:"-" db:"file_name"`
 }
 
 type Index struct {

@@ -13,6 +13,7 @@ import { isLoggedIn } from "./auth.js";
 import Auth from "./pages/Auth.jsx";
 import Passwords from "./pages/Passwords.jsx";
 import Devices from "./pages/Devices.jsx";
+import Documents from "./pages/Documents.jsx";
 
 async function authLoader() {
   return (await isLoggedIn()) ? null : redirect("/auth");
@@ -34,6 +35,10 @@ const router = createBrowserRouter([
           {
             path: "/devices",
             element: <Devices />,
+          },
+          {
+            path: "/documents",
+            element: <Documents />,
           },
         ],
       },
